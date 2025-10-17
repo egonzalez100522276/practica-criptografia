@@ -1,38 +1,43 @@
-import { useState } from 'react';
-import { Eye, EyeOff, Lock, Mail, User } from 'lucide-react';
+import { useState } from "react";
+import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 
 interface RegisterProps {
   onRegister: (username: string, email: string, password: string) => void;
   onSwitchToLogin: () => void;
 }
 
-export default function Register({ onRegister, onSwitchToLogin }: RegisterProps) {
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+export default function Register({
+  onRegister,
+  onSwitchToLogin,
+}: RegisterProps) {
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (!username || !email || !password || !confirmPassword) {
-      setError('All fields are required');
+      setError("All fields are required");
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError("Password must be at least 6 characters");
       return;
     }
 
+    // La lógica de la API se ha movido a App.tsx.
+    // Aquí solo llamamos a la función que nos pasan por props.
     onRegister(username, email, password);
   };
 
@@ -46,7 +51,9 @@ export default function Register({ onRegister, onSwitchToLogin }: RegisterProps)
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-red-600 to-orange-600 rounded-full mb-4">
               <User className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Join the Agency</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              Join the Agency
+            </h1>
             <p className="text-slate-400">Recruit Registration Portal</p>
           </div>
 
@@ -58,7 +65,10 @@ export default function Register({ onRegister, onSwitchToLogin }: RegisterProps)
             )}
 
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-slate-300 mb-2">
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-slate-300 mb-2"
+              >
                 Agent Codename
               </label>
               <div className="relative">
@@ -75,7 +85,10 @@ export default function Register({ onRegister, onSwitchToLogin }: RegisterProps)
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-slate-300 mb-2"
+              >
                 Email Address
               </label>
               <div className="relative">
@@ -92,14 +105,17 @@ export default function Register({ onRegister, onSwitchToLogin }: RegisterProps)
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-slate-300 mb-2"
+              >
                 Password
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-500" />
                 <input
                   id="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-slate-900/50 border border-slate-700 rounded-lg pl-11 pr-12 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent transition"
@@ -110,20 +126,27 @@ export default function Register({ onRegister, onSwitchToLogin }: RegisterProps)
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-300 mb-2">
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-slate-300 mb-2"
+              >
                 Confirm Password
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-500" />
                 <input
                   id="confirmPassword"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full bg-slate-900/50 border border-slate-700 rounded-lg pl-11 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent transition"
@@ -145,7 +168,8 @@ export default function Register({ onRegister, onSwitchToLogin }: RegisterProps)
               onClick={onSwitchToLogin}
               className="text-slate-400 hover:text-white transition text-sm"
             >
-              Already an agent? <span className="text-red-500 font-semibold">Login here</span>
+              Already an agent?{" "}
+              <span className="text-red-500 font-semibold">Login here</span>
             </button>
           </div>
         </div>
