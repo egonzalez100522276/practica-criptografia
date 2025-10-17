@@ -1,21 +1,27 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status, Body
+from fastapi.responses import JSONResponse
 from ..schemas import user as user_schema
 from ..services import user_service
 
 router = APIRouter()
 
-@router.post("/register", response_model=user_schema.UserResponse)
-async def register_user(user_data: user_schema.UserCreate):
+@router.post("/register")
+async def register_user(user_data: user_schema.UserCreate = Body(...)):
     """
-    Endpoint para registrar un nuevo usuario.
-    - Valida que los datos de entrada coincidan con el esquema UserCreate.
-    - Llama al servicio de usuario para manejar la lógica de creación.
-    - Devuelve una respuesta que coincide con el esquema UserResponse.
+    Endpoint de prueba para registrar un nuevo usuario.
+    - Recibe un JSON con username, email y password.
+    - Si el username es "error", devuelve un error 400.
+    - Si no, simula una inserción exitosa y devuelve un 200 OK.
     """
-    # En un futuro, aquí se podría comprobar si el email ya existe antes de crearlo.
-    # Por ejemplo:
-    # db_user = user_service.get_user_by_email(email=user_data.email)
-    # if db_user:
-    #     raise HTTPException(status_code=400, detail="El email ya está registrado.")
+    if user_data.username == "error":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Error simulado al intentar registrar el usuario."
+        )
     
-    return user_service.create_user(user=user_data)
+    # Obviamos la implementación de insertar el usuario, como se solicitó.
+    # Simplemente devolvemos una respuesta de éxito.
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"message": f"Usuario '{user_data.username}' registrado con éxito (simulación)."}
+    )

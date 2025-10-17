@@ -2,12 +2,14 @@ from pydantic import BaseModel, EmailStr
 
 # Esquema para recibir los datos de registro de un usuario desde el frontend
 class UserCreate(BaseModel):
+    username: str
     email: EmailStr
     password: str
 
 # Esquema para devolver los datos de un usuario al frontend (¡sin la contraseña!)
 class UserResponse(BaseModel):
     id: int # Suponiendo que la BD asigna un ID numérico
+    username: str
     email: EmailStr
 
     class Config:

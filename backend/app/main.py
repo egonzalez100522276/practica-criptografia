@@ -3,8 +3,8 @@ from .routers import auth  # Importamos el módulo del router de autenticación
 
 # Crea la instancia principal de la aplicación FastAPI
 app = FastAPI(
-    title="API de la Agencia de Espías",
-    description="Una API para gestionar agentes secretos y sus misiones.",
+    title="Spy Agency API",
+    description="In this API you will find how to interact with the backend, mostly to use cryptography-related functions.",
     version="0.1.0",
 )
 
