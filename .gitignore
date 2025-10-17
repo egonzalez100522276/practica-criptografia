@@ -21,3 +21,11 @@ dist-ssr
 *.sln
 *.sw?
 .env
+# Python (cache and venv)
+__pycache__/
+*.pyo
+*.pyc
+*.pyc
+.venv/
+.eggs/
+.mypy_cache/
