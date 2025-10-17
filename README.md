@@ -27,7 +27,7 @@ First, let's get the API server running.
     This isolates the project's Python dependencies. Since the `.venv` folder is not in the repository, you need to create it.
 
     ```bash
-    # Create the virtual environment
+    # Create the virtual environment. You might need to use 'python3' on macOS/Linux.
     python -m venv .venv
 
     # Activate on Windows
