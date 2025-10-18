@@ -11,7 +11,6 @@ def create_user(username: str, email: str, password_hash: str) -> dict:
         """, (username, email, password_hash))
         user_id = cursor.lastrowid
         conn.commit()
-        # Return a dictionary that matches the UserResponse schema
         return {"id": user_id, "username": username, "email": email}
     except Exception as e:
         conn.rollback()
@@ -20,14 +19,23 @@ def create_user(username: str, email: str, password_hash: str) -> dict:
         conn.close()
 
 
-def get_user_by_email_or_username(email: str, username: str):
-    """Finds a user by email or username to check for existence."""
+def get_user_by_username(username: str):
+    """Finds a user by username."""
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE email = ? OR username = ?", (email, username))
+    cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
     user = cursor.fetchone()
     conn.close()
-    return user
+    return dict(user) if user else None
+
+def get_user_by_email(email: str):
+    """Finds a user by email."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+    user = cursor.fetchone()
+    conn.close()
+    return dict(user) if user else None
 
 def get_users() -> list:
     """

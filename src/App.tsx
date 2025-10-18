@@ -18,17 +18,41 @@ function App() {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleLogin = (email: string, password: string) => {
-    const mockUser: User = {
-      id: "user-123",
-      username: email.split("@")[0],
-      email: email,
-      role: email.includes("admin") ? "admin" : "agent",
-    };
+  const handleLogin = async (username: string, password: string) => {
+    try {
+      const loginFormData = new URLSearchParams();
+      loginFormData.append("username", username);
+      loginFormData.append("password", password);
 
-    setCurrentUser(mockUser);
-    setCurrentView("dashboard");
-    showNotification("success", "Login successful! Welcome back, agent.");
+      const response = await fetch("http://127.0.0.1:8000/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: loginFormData.toString(),
+      });
+
+      if (response.ok) {
+        const loggedInUser = await response.json();
+        setCurrentUser({
+          id: loggedInUser.id,
+          username: loggedInUser.username,
+          email: loggedInUser.email,
+          role: loggedInUser.username.includes("admin") ? "admin" : "agent", // Mock role logic
+        });
+        setCurrentView("dashboard");
+        showNotification("success", "Login successful! Welcome back, agent.");
+      } else {
+        const errorData = await response.json();
+        showNotification("error", errorData.detail || "Login failed.");
+      }
+    } catch (err) {
+      console.error("Connection error:", err);
+      showNotification(
+        "error",
+        "Could not connect to the server. Please try again later."
+      );
+    }
   };
 
   const handleRegister = async (
@@ -46,19 +70,34 @@ function App() {
       });
 
       if (response.ok) {
-        // En un caso real, la respuesta del backend podría devolver los datos del usuario.
-        const mockUser: User = {
-          id: `user-${Date.now()}`,
-          username: username,
-          email: email,
-          role: "agent",
-        };
-        setCurrentUser(mockUser);
-        setCurrentView("dashboard");
-        showNotification(
-          "success",
-          "Registration successful! Welcome to the agency."
-        );
+        showNotification("success", "Registration successful! Logging in...");
+
+        // Now, automatically log the user in
+        const loginFormData = new URLSearchParams();
+        loginFormData.append("username", username);
+        loginFormData.append("password", password);
+
+        const loginResponse = await fetch("http://127.0.0.1:8000/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: loginFormData.toString(),
+        });
+
+        if (loginResponse.ok) {
+          const loggedInUser = await loginResponse.json();
+          setCurrentUser({
+            id: loggedInUser.id,
+            username: loggedInUser.username,
+            email: loggedInUser.email,
+            role: loggedInUser.username.includes("admin") ? "admin" : "agent", // Mock role logic
+          });
+          setCurrentView("dashboard");
+        } else {
+          // This should ideally not happen if registration was successful
+          showNotification("error", "Auto-login failed after registration.");
+        }
       } else {
         const errorData = await response.json();
         showNotification(

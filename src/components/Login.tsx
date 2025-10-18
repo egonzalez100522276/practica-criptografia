@@ -1,27 +1,27 @@
-import { useState } from 'react';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { useState } from "react";
+import { Eye, EyeOff, Lock, User } from "lucide-react";
 
 interface LoginProps {
-  onLogin: (email: string, password: string) => void;
+  onLogin: (username: string, password: string) => void;
   onSwitchToRegister: () => void;
 }
 
 export default function Login({ onLogin, onSwitchToRegister }: LoginProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
-    if (!email || !password) {
-      setError('All fields are required');
+    if (!username || !password) {
+      setError("All fields are required");
       return;
     }
 
-    onLogin(email, password);
+    onLogin(username, password);
   };
 
   return (
@@ -46,31 +46,37 @@ export default function Login({ onLogin, onSwitchToRegister }: LoginProps) {
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
-                Email Address
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-slate-300 mb-2"
+              >
+                Agent Codename
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-500" />
                 <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="w-full bg-slate-900/50 border border-slate-700 rounded-lg pl-11 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent transition"
-                  placeholder="agent@spy.agency"
+                  placeholder="Agent007"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-slate-300 mb-2"
+              >
                 Password
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-500" />
                 <input
                   id="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-slate-900/50 border border-slate-700 rounded-lg pl-11 pr-12 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent transition"
@@ -81,7 +87,11 @@ export default function Login({ onLogin, onSwitchToRegister }: LoginProps) {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -99,7 +109,8 @@ export default function Login({ onLogin, onSwitchToRegister }: LoginProps) {
               onClick={onSwitchToRegister}
               className="text-slate-400 hover:text-white transition text-sm"
             >
-              New recruit? <span className="text-red-500 font-semibold">Register here</span>
+              New recruit?{" "}
+              <span className="text-red-500 font-semibold">Register here</span>
             </button>
           </div>
         </div>

@@ -11,7 +11,13 @@ class UserResponse(BaseModel):
     id: int # Assuming the DB assigns a numeric ID
     username: str
     email: EmailStr
-    password_hash: str
 
     class Config:
         from_attributes = True # Allows creating the model from a DB object
+    
+class UserResponseWithPassword(UserResponse):
+    password_hash: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str

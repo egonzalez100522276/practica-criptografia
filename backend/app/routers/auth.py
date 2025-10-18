@@ -1,21 +1,21 @@
-from fastapi import APIRouter, HTTPException, status, Body
+from fastapi import APIRouter, HTTPException, status, Body, Depends
+from fastapi.security import OAuth2PasswordRequestForm
 from ..schemas import user as user_schema
 from ..services import user_service
-from ..core.security import get_password_hash
+from ..core.security import get_password_hash, verify_password
 
 router = APIRouter()
 
 @router.post("/register", response_model=user_schema.UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user_data: user_schema.UserCreate = Body(...)):
-    # 1. Check if the user or email already exists
-    existing_user = user_service.get_user_by_email_or_username(email=user_data.email, username=user_data.username)
-    if existing_user:
-        if existing_user['email'] == user_data.email:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
-        if existing_user['username'] == user_data.username:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
+    # 1. Check if username or email already exist. This gives us full control over the validation order.
+    if user_service.get_user_by_username(user_data.username):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
+    
+    if user_service.get_user_by_email(user_data.email):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
-    # 2. Hash the password SECURELY using passlib/bcrypt
+    # 2. Hash the password SECURELY using the configured scheme (argon2)
     hashed_password = get_password_hash(user_data.password)
 
     try:
@@ -33,10 +33,22 @@ def register_user(user_data: user_schema.UserCreate = Body(...)):
             detail=f"An internal error occurred while creating the user: {e}"
         )
 
-@router.get("/users", response_model=list[user_schema.UserResponse])
-def get_users():
+@router.post("/login", response_model=user_schema.UserResponse)
+def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
     """
-    Retrieves a list of all users from the database.
+    Handles user login by verifying credentials from a form.
+    - It expects 'username' and 'password' fields.
+    - It returns user data on success.
     """
-    users = user_service.get_users()
-    return users
+    # 1. Find the user in the database by their username.
+    user = user_service.get_user_by_username(form_data.username)
+
+    # 2. Check if the user exists and if the provided password is correct.
+    # This uses the SECURE `verify_password` function.
+    if not user or not verify_password(form_data.password, user['password_hash']):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+        )
+    # 3. If credentials are valid, return the user's data.
+    return user

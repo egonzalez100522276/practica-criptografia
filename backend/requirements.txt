@@ -3,3 +3,4 @@ uvicorn[standard]
 passlib[argon2,bcrypt]
 pydantic[email]
 python-dotenv
+python-multipart

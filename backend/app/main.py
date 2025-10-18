@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .routers import auth  # Import the auth router module
+from .routers import users  # Import the users router module
 
 # Crea la instancia principal de la aplicación FastAPI
 app = FastAPI(
@@ -29,6 +30,8 @@ app.add_middleware(
 # The 'prefix' makes all routes in that router start with /auth
 # (e.g., /auth/register)
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+app.include_router(users.router, prefix="/users", tags=["Users"])
+
 
 @app.get("/", tags=["Root"])
 async def read_root():
