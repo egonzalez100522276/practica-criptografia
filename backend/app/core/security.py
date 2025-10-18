@@ -1,12 +1,13 @@
 from passlib.context import CryptContext
 
-# Configura el contexto para el hashing de contraseñas usando bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Configure the context for password hashing.
+# Argon2 is the new default, but we keep bcrypt for legacy hashes.
+pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifica una contraseña en texto plano contra una hasheada."""
+    """Verifies a plain password against a hashed one."""
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    """Hashea una contraseña."""
+    """Hashes a password using the default scheme (argon2)."""
     return pwd_context.hash(password)

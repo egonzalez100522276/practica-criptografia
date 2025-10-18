@@ -1,20 +1,43 @@
-from ..schemas import user as user_schema
-from ..core.security import get_password_hash
+from app.db.database import get_connection
 
-def create_user(user: user_schema.UserCreate) -> dict:
+def create_user(username: str, email: str, password_hash: str) -> dict:
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO users (username, email, password_hash)
+            VALUES (?, ?, ?);
+        """, (username, email, password_hash))
+        user_id = cursor.lastrowid
+        conn.commit()
+        # Return a dictionary that matches the UserResponse schema
+        return {"id": user_id, "username": username, "email": email}
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+def get_user_by_email_or_username(email: str, username: str):
+    """Finds a user by email or username to check for existence."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE email = ? OR username = ?", (email, username))
+    user = cursor.fetchone()
+    conn.close()
+    return user
+
+def get_users() -> list:
     """
-    Esta función se encarga de la lógica para crear un usuario.
-    1. Hashea la contraseña.
-    2. Guarda el usuario en la base de datos (simulado).
-    3. Devuelve el usuario creado.
+    Retrieves all users from the database.
     """
-    hashed_password = get_password_hash(user.password)
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users")
+    rows = cursor.fetchall()
+    conn.close()
     
-    print("\n--- Simulación de Creación de Usuario en BD ---")
-    print(f"Email a guardar: {user.email}")
-    print(f"Contraseña hasheada a guardar: {hashed_password}")
-    print("--- Fin Simulación ---\n")
-    
-    # En un caso real, aquí guardarías el usuario en tu BD y obtendrías un ID.
-    # Devolvemos un usuario simulado para que coincida con el esquema UserResponse.
-    return {"id": 1, "email": user.email}
+    users = [dict(row) for row in rows]
+    return users

@@ -1,5 +1,5 @@
 fastapi
 uvicorn[standard]
-passlib[bcrypt]
+passlib[argon2,bcrypt]
 pydantic[email]
 python-dotenv

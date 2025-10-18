@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import auth  # Importamos el módulo del router de autenticación
+from .routers import auth  # Import the auth router module
 
 # Crea la instancia principal de la aplicación FastAPI
 app = FastAPI(
@@ -9,27 +9,27 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# --- Configuración de CORS ---
-# Lista de orígenes permitidos (los dominios/puertos de tu frontend)
+# --- CORS Configuration ---
+# List of allowed origins (your frontend's domains/ports)
 origins = [
-    "http://localhost:5173",  # El puerto por defecto de Vite
-    "http://localhost:3000",  # El puerto por defecto de Create React App
+    "http://localhost:5173",  # Default Vite port
+    "http://localhost:3000",  # Default Create React App port
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,       # Permite estos orígenes
-    allow_credentials=True,      # Permite cookies (importante para el futuro)
-    allow_methods=["*"],         # Permite todos los métodos (GET, POST, etc.)
-    allow_headers=["*"],         # Permite todas las cabeceras
+    allow_origins=origins,       # Allow these origins
+    allow_credentials=True,      # Allow cookies (important for the future)
+    allow_methods=["*"],         # Allow all methods (GET, POST, etc.)
+    allow_headers=["*"],         # Allow all headers
 )
-# --- Fin de la configuración de CORS ---
+# --- End of CORS configuration ---
 
-# Incluimos las rutas del router 'auth'.
-# El 'prefix' hace que todas las rutas de ese router empiecen por /auth
-# (ej: /auth/register)
+# Include the routes from the 'auth' router.
+# The 'prefix' makes all routes in that router start with /auth
+# (e.g., /auth/register)
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 
 @app.get("/", tags=["Root"])
 async def read_root():
-    return {"message": "Bienvenido a la API. Ve a /docs para la documentación interactiva."}
+    return {"message": "Welcome to the API. Go to /docs for interactive documentation."}
