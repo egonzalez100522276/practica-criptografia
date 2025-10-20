@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import auth  # Import the auth router module
+from .routers import register  # Import the auth router module
 from .routers import users  # Import the users router module
+from .routers import login  # Import the login router module
 
 # Crea la instancia principal de la aplicación FastAPI
 app = FastAPI(
@@ -26,10 +27,9 @@ app.add_middleware(
 )
 # --- End of CORS configuration ---
 
-# Include the routes from the 'auth' router.
-# The 'prefix' makes all routes in that router start with /auth
-# (e.g., /auth/register)
-app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+# Include routers
+app.include_router(register.router, prefix="/register", tags=["Authentication"])
+app.include_router(login.router, prefix="/login", tags=["Authentication"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
 
 

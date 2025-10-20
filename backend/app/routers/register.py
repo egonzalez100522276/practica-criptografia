@@ -6,7 +6,7 @@ from ..core.security import get_password_hash, verify_password
 
 router = APIRouter()
 
-@router.post("/register", response_model=user_schema.UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=user_schema.UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user_data: user_schema.UserCreate = Body(...)):
     # 1. Check if username or email already exist. This gives us full control over the validation order.
     if user_service.get_user_by_username(user_data.username):
