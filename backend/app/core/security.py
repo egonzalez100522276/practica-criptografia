@@ -12,7 +12,10 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 # --- JWT ---
 
 # Constants
-SECRET_KEY = os.getenv("SECRET_KEY", "lorem-ipsum-dolor-sit-amet-consectetur-adipiscing-elit-sed-do-eiusmod-tempor-incididunt-ut-labore-et-dolore-magna-aliqua-ut-enim-ad-minim-veniam-quis-nostrud-exercitation-ullamco-laboris-nisi-ut-aliquip-ex-ea-commodo-consequat-duis-aute-irure-dolor-in-reprehenderit-in-voluptate-velit-esse-cillum-dolore-eu-fugiat-nullam-id-lorem-ipsum-dolor-sit-amet-consectetur-adipiscing-elit-sed-do-eiusmod-tempor-incididunt-ut-labore-et-dolore-magna-aliqua-ut-enim-ad-minim-veniam-quis-nostrud-exercitation-ullamco-laboris-nisi-ut-aliquip-ex-ea-commodo-consequat")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY is not set in environment variables.")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -32,7 +35,7 @@ def decode_access_token(token: str) -> Optional[dict]:
         return payload
     except JWTError:
         return None
-    
+   
 
 # --- Password Hashing ---
 
@@ -78,7 +81,7 @@ def serialize_keys_in_pem(private_key, public_key):
         encryption_algorithm=serialization.NoEncryption()
     ).decode("utf-8")
 
-    return public_pem, private_pem
+    return private_pem, public_pem
 
 
 def generate_user_keys(password: str):
