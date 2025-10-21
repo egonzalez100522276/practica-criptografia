@@ -3,22 +3,28 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt # JSON Object Signing and Encryption
+from pathlib import Path
+from dotenv import load_dotenv
+
 # Cryptography functions
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM 
 
-# --- JWT ---
+
+# Load .env
+dotenv_path = Path(__file__).resolve().parent.parent.parent / '.env'
+load_dotenv(dotenv_path)
 
 # Constants
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError("SECRET_KEY is not set in environment variables.")
-
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+# --- JWT ---
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     """Creates a JWT access token."""
     to_encode = data.copy()
@@ -105,9 +111,7 @@ def generate_user_keys(password: str):
     # 5. Encrypt private key with AES-GCM
     aesgcm = AESGCM(aes_key)
     nonce = os.urandom(12)
-    encrypted_private_key = aesgcm.encrypt(nonce, private_pem, None)
+    encrypted_private_key = aesgcm.encrypt(nonce, private_pem.encode("utf-8"), None)
 
     # 6. Return all
     return public_pem, encrypted_private_key, salt, nonce
-
-

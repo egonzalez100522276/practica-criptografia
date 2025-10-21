@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Body, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from ..schemas import user as user_schema
-from ..services import user_service
+from ..services import user_service, session_service
 from ..core.security import verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from datetime import timedelta, datetime, timezone
 
@@ -34,6 +34,7 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
     )
 
     # 4. Save the session to the database
-    user_service.save_session(user_id=user['id'], jwt_token=access_token, expires_at=expire_time)
+    session_service.save_session(user_id=user['id'], jwt_token=access_token, expires_at=expire_time)
 
     return {"access_token": access_token, "token_type": "bearer"}
+

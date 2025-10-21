@@ -1,7 +1,4 @@
 from app.db.database import get_connection
-from datetime import datetime
-from typing import Optional
-from ..core.security import decode_access_token
 
 class UserObj:
     def __init__(self, id, username, email, role):
@@ -88,6 +85,16 @@ def get_user_private_key(user_id: int):
     conn.close()
     return key
 
+def get_user_by_id(user_id: int):
+    """
+    Finds a user by ID.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    return dict(user) if user else None
 
 
 def get_user_by_username(username: str):
@@ -126,67 +133,16 @@ def get_users() -> list:
     return users
 
 
-def delete_user(user_id: int):
+def delete_user(user_id: int) -> bool:
+    """
+    Deletes a user from the database by their ID. Returns True if successful.
+    """
     conn = get_connection()
     cursor = conn.cursor()
+    user_exists = cursor.execute("SELECT 1 FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user_exists:
+        return False
     cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
-
-def save_session(user_id: int, jwt_token: str, expires_at: datetime):
-    """Saves a new session token to the database."""
-    conn = get_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute(
-            "INSERT INTO sessions (user_id, jwt_token, expires_at) VALUES (?, ?, ?)",
-            (user_id, jwt_token, expires_at)
-        )
-        conn.commit()
-    finally:
-        conn.close()
-
-def get_sessions_by_user_id(user_id: int) -> list:
-    """Retrieves all active sessions for a given user."""
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT id, user_id, jwt_token, issued_at, expires_at FROM sessions WHERE user_id = ? AND expires_at > CURRENT_TIMESTAMP",
-        (user_id,)
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    
-    sessions = [dict(row) for row in rows]
-    return sessions
-
-def get_user_from_token(token: str) -> Optional[dict]:
-    """
-    Decodes a JWT, validates its payload, and checks if the session exists in the database.
-    Returns the user payload dictionary if valid, otherwise None.
-    """
-    payload = decode_access_token(token)
-    if not payload:
-        return None
-
-    user_id: int = payload.get("user_id")
-    username: str = payload.get("sub")
-    user_role: str = payload.get("role")
-
-    if user_id is None or username is None or user_role is None:
-        return None
-
-    # Security enhancement: Check if the token exists in our sessions table
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT 1 FROM sessions WHERE jwt_token = ? AND expires_at > CURRENT_TIMESTAMP",
-        (token,)
-    )
-    session_exists = cursor.fetchone()
-    conn.close()
-
-    if not session_exists:
-        return None
-
-    return UserObj(user_id, username, None, user_role)
+    return True

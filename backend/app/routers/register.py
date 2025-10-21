@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, status, Body
 from ..schemas import user as user_schema
 from ..schemas import keys as key_schema
-from ..services import user_service
+from ..services import user_service, session_service
 from ..core.security import generate_user_keys, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 
 
@@ -50,14 +50,13 @@ def register_user(user_data: user_schema.UserCreate = Body(...)):
         )
         user_service.save_user_public_key(**public_key_obj.dict())
 
-        # 6. Save encrypted private key using schema
-        private_key_obj = key_schema.UserPrivateKey(
+        # 6. Save encrypted private key directly
+        user_service.save_user_private_key(
             user_id=created_user.id,
-            encrypted_private_key=b64encode(encrypted_private_key).decode(),
-            salt=b64encode(salt).decode(),
-            nonce=b64encode(nonce).decode()
+            encrypted_private_key=b64encode(encrypted_private_key),
+            salt=b64encode(salt),
+            nonce=b64encode(nonce)
         )
-        user_service.save_user_private_key(**private_key_obj.dict())
 
         # 7. Create and return an access token for the newly registered user
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -67,7 +66,7 @@ def register_user(user_data: user_schema.UserCreate = Body(...)):
         )
 
         # 8. Save the session to the database
-        user_service.save_session(user_id=created_user.id, jwt_token=access_token, expires_at=expire_time)
+        session_service.save_session(user_id=created_user.id, jwt_token=access_token, expires_at=expire_time)
 
         return {"access_token": access_token, "token_type": "bearer"}
 
