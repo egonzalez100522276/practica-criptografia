@@ -29,3 +29,6 @@ __pycache__/
 .venv/
 .eggs/
 .mypy_cache/
+
+# Database
+*.db
