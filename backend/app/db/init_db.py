@@ -41,11 +41,7 @@ def create_tables() -> None:
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS missions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            description TEXT,
-            status TEXT NOT NULL DEFAULT 'pending',
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            complete INTEGER NOT NULL DEFAULT 0,
+            content_encrypted TEXT NOT NULL,    -- JSON with the mission content
             iv TEXT,
             creator_id INTEGER,
             FOREIGN KEY (creator_id) REFERENCES users (id) 
@@ -82,10 +78,13 @@ def create_tables() -> None:
 def seed_demo_user() -> None:
     conn = get_connection()
     cursor = conn.cursor()
+
     cursor.execute("""
         INSERT OR IGNORE INTO users (username, email, role, password_hash)
         VALUES ('admin', 'admin@example.com', 'admin', 'hashed_password');
     """)
+    
+
     conn.commit()
     conn.close()
 
@@ -97,6 +96,6 @@ if __name__ == "__main__":
     conn.close()
 
     create_tables()
-    seed_demo_user()
+    # seed_demo_user()
     print(f"Database initialized with tables: users, user_keys, user_private_keys, missions, mission_access, sessions ({DB_PATH})")
 

@@ -1,54 +1,95 @@
-from fastapi import APIRouter, HTTPException, status, Body, Depends
-from fastapi.security import OAuth2PasswordRequestForm
+# backend/routers/user.py
+from fastapi import APIRouter, HTTPException, status, Body
 from ..schemas import user as user_schema
 from ..services import user_service
-from ..core.security import get_password_hash, verify_password
+from ..core.security import get_password_hash
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import os
 
 router = APIRouter()
 
+def generate_user_keys(password: str):
+    """
+    Generate RSA key pair and encrypt the private key with a key derived from the user's password.
+    Returns (public_pem, encrypted_private_key, salt, nonce)
+    """
+    # 1. Generate RSA key pair
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=3072)
+    public_key = private_key.public_key()
+
+    # 2. Serialize public key in PEM format
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode("utf-8")
+
+    # 3. Serialize private key in PEM format (no encryption here, we encrypt manually)
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption()
+    )
+
+    # 4. Derive AES key from password using scrypt
+    salt = os.urandom(16)
+    kdf = Scrypt(salt=salt, length=32, n=2**14, r=8, p=1)
+    aes_key = kdf.derive(password.encode())
+
+    # 5. Encrypt private key with AES-GCM
+    aesgcm = AESGCM(aes_key)
+    nonce = os.urandom(12)
+    encrypted_private_key = aesgcm.encrypt(nonce, private_pem, None)
+
+    return public_pem, encrypted_private_key, salt, nonce
+
 @router.post("/", response_model=user_schema.UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user_data: user_schema.UserCreate = Body(...)):
-    # 1. Check if username or email already exist. This gives us full control over the validation order.
+    """
+    Register a new user in the Database, generating a pair of AES keys.
+    """
+
+    # 1. Check if username or email already exist
     if user_service.get_user_by_username(user_data.username):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
     
     if user_service.get_user_by_email(user_data.email):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
-    # 2. Hash the password SECURELY using the configured scheme (argon2)
+
+    # 2. Hash the password securely using Argon2
     hashed_password = get_password_hash(user_data.password)
 
     try:
-        # 3. Save to the DB and get the created user
+        # 3. Save user in the database
         created_user = user_service.create_user(
             username=user_data.username,
             email=user_data.email,
+            role='spy',
             password_hash=hashed_password
         )
-        # 4. Return the created user (FastAPI handles serialization)
+
+        # 4. Generate RSA key pair and encrypt the private key
+        public_pem, encrypted_private_key, salt, nonce = generate_user_keys(user_data.password)
+
+        # 5. Save public key in user_keys table
+        user_service.save_user_public_key(user_id=created_user.id, public_key=public_pem)
+
+        # 6. Save encrypted private key in user_private_keys table
+        user_service.save_user_private_key(
+            user_id=created_user.id,
+            encrypted_private_key=encrypted_private_key,
+            salt=salt,
+            nonce=nonce
+        )
+
+        # 7. Return the created user
         return created_user
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An internal error occurred while creating the user: {e}"
         )
-
-@router.post("/login", response_model=user_schema.UserResponse)
-def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
-    """
-    Handles user login by verifying credentials from a form.
-    - It expects 'username' and 'password' fields.
-    - It returns user data on success.
-    """
-    # 1. Find the user in the database by their username.
-    user = user_service.get_user_by_username(form_data.username)
-
-    # 2. Check if the user exists and if the provided password is correct.
-    # This uses the SECURE `verify_password` function.
-    if not user or not verify_password(form_data.password, user['password_hash']):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-        )
-    # 3. If credentials are valid, return the user's data.
-    return user
