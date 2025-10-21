@@ -1,7 +1,7 @@
 fastapi
 uvicorn[standard]
-passlib[argon2,bcrypt]
-pydantic[email]
-python-dotenv
-python-multipart
+pydantic
+passlib[bcrypt]
 cryptography
+python-jose[cryptography]
+python-multipart

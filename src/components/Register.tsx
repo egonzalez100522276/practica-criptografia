@@ -2,7 +2,11 @@ import { useState } from "react";
 import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 
 interface RegisterProps {
-  onRegister: (username: string, email: string, password: string) => void;
+  onRegister: (
+    username: string,
+    email: string,
+    password: string
+  ) => Promise<void>;
   onSwitchToLogin: () => void;
 }
 
@@ -17,7 +21,7 @@ export default function Register({
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -38,7 +42,11 @@ export default function Register({
 
     // La lógica de la API se ha movido a App.tsx.
     // Aquí solo llamamos a la función que nos pasan por props.
-    onRegister(username, email, password);
+    try {
+      await onRegister(username, email, password);
+    } catch (err: any) {
+      setError(err.message || "An unknown error occurred.");
+    }
   };
 
   return (

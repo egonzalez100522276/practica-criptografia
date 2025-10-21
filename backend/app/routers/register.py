@@ -4,11 +4,12 @@ from fastapi import APIRouter, HTTPException, status, Body
 from ..schemas import user as user_schema
 from ..schemas import keys as key_schema
 from ..services import user_service
-from ..core.security import get_password_hash
+from ..core.security import get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from datetime import timedelta
 import os
 
 router = APIRouter()
@@ -49,7 +50,7 @@ def generate_user_keys(password: str):
 
 
 
-@router.post("/", response_model=user_schema.UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=user_schema.Token, status_code=status.HTTP_201_CREATED)
 def register_user(user_data: user_schema.UserCreate = Body(...)):
     """
     Register a new user, generate RSA key pair, encrypt private key, and save everything in DB.
@@ -92,8 +93,13 @@ def register_user(user_data: user_schema.UserCreate = Body(...)):
         )
         user_service.save_user_private_key(**private_key_obj.dict())
 
-        # 7. Return created user
-        return created_user
+        # 7. Create and return an access token for the newly registered user
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": created_user.username, "user_id": created_user.id, "role": created_user.role},
+            expires_delta=access_token_expires
+        )
+        return {"access_token": access_token, "token_type": "bearer"}
 
     except Exception as e:
         raise HTTPException(
