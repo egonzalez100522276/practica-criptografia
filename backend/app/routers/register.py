@@ -1,53 +1,19 @@
-# backend/routers/user.py
-from base64 import b64encode
+# Modules
 from fastapi import APIRouter, HTTPException, status, Body
 from ..schemas import user as user_schema
 from ..schemas import keys as key_schema
 from ..services import user_service
-from ..core.security import get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM 
-from datetime import timedelta, datetime, timezone
+from ..core.security import generate_user_keys, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+
+
+
+# Other
 import os
+from base64 import b64encode
+from datetime import timedelta, datetime, timezone
 
+# Router
 router = APIRouter()
-
-def generate_user_keys(password: str):
-    """
-    Generate RSA key pair and encrypt the private key with a key derived from the user's password.
-    Returns (public_pem, encrypted_private_key, salt, nonce)
-    """
-    # 1. Generate RSA key pair
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=3072)
-    public_key = private_key.public_key()
-
-    # 2. Serialize public key in PEM format
-    public_pem = public_key.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    ).decode("utf-8")
-
-    # 3. Serialize private key in PEM format (no encryption here, we encrypt manually)
-    private_pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption()
-    )
-
-    # 4. Derive AES key from password using scrypt
-    salt = os.urandom(16)
-    kdf = Scrypt(salt=salt, length=32, n=2**14, r=8, p=1)
-    aes_key = kdf.derive(password.encode())
-
-    # 5. Encrypt private key with AES-GCM
-    aesgcm = AESGCM(aes_key)
-    nonce = os.urandom(12)
-    encrypted_private_key = aesgcm.encrypt(nonce, private_pem, None)
-
-    return public_pem, encrypted_private_key, salt, nonce
-
 
 
 @router.post("/", response_model=user_schema.Token, status_code=status.HTTP_201_CREATED)
