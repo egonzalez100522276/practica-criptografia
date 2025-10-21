@@ -25,6 +25,17 @@ def create_tables() -> None:
         FOREIGN KEY (user_id) REFERENCES users (id)
     );
 """)
+    
+    # Table for user private keys
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS user_private_keys (
+        user_id INTEGER PRIMARY KEY,
+        private_key_encrypted TEXT NOT NULL,
+        salt TEXT NOT NULL,
+        nonce TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+);
+""")
 
     # Missions table
     cursor.execute("""
@@ -87,5 +98,5 @@ if __name__ == "__main__":
 
     create_tables()
     seed_demo_user()
-    print(f"Database initialized with tables: users, user_keys, missions, mission_access, sessions ({DB_PATH})")
+    print(f"Database initialized with tables: users, user_keys, user_private_keys, missions, mission_access, sessions ({DB_PATH})")
 
