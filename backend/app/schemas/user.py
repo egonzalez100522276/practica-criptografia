@@ -4,6 +4,7 @@ from pydantic import BaseModel, EmailStr
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
+    role: str = "agent"
     password: str
 
 # Schema for returning user data to the frontend (without the password!)
@@ -11,6 +12,7 @@ class UserResponse(BaseModel):
     id: int # Assuming the DB assigns a numeric ID
     username: str
     email: EmailStr
+    role: str
 
     class Config:
         from_attributes = True # Allows creating the model from a DB object

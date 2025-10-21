@@ -22,7 +22,7 @@ def create_tables() -> None:
     CREATE TABLE IF NOT EXISTS user_keys (
         user_id INTEGER PRIMARY KEY,
         public_key TEXT NOT NULL,   -- clave pública RSA (en formato PEM)
-        FOREIGN KEY (user_id) REFERENCES users (id)
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
     );
 """)
     
@@ -33,7 +33,7 @@ def create_tables() -> None:
         private_key_encrypted TEXT NOT NULL,
         salt TEXT NOT NULL,
         nonce TEXT NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users (id)
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 """)
 
@@ -98,4 +98,3 @@ if __name__ == "__main__":
     create_tables()
     # seed_demo_user()
     print(f"Database initialized with tables: users, user_keys, user_private_keys, missions, mission_access, sessions ({DB_PATH})")
-

@@ -9,5 +9,7 @@ def get_connection():
     Uses sqlite3.Row to access columns by name.
     """
     conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+    # Habilitar el soporte para claves foráneas (necesario para ON DELETE CASCADE)
+    conn.execute("PRAGMA foreign_keys = ON;")
     conn.row_factory = sqlite3.Row
     return conn

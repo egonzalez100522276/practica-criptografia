@@ -13,3 +13,11 @@ def get_users():
     """
     users = user_service.get_users()
     return users
+
+@router.delete("/{user_id}")
+def delete_user(user_id: int):
+    """
+    Deletes a user from the database by their ID.
+    """
+    user_service.delete_user(user_id)
+    return {"message": "User deleted successfully"}

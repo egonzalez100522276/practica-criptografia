@@ -91,7 +91,7 @@ function App() {
             id: loggedInUser.id,
             username: loggedInUser.username,
             email: loggedInUser.email,
-            role: loggedInUser.username.includes("admin") ? "admin" : "agent", // Mock role logic
+            role: loggedInUser.role,
           });
           setCurrentView("dashboard");
         } else {

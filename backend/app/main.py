@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .routers import register  # Import the auth router module
 from .routers import users  # Import the users router module
 from .routers import login  # Import the login router module
+from .routers import keys # Import the keys router module
 
 # Crea la instancia principal de la aplicación FastAPI
 app = FastAPI(
@@ -28,8 +29,9 @@ app.add_middleware(
 # --- End of CORS configuration ---
 
 # Include routers
-app.include_router(register.router, prefix="/register", tags=["Authentication"])
-app.include_router(login.router, prefix="/login", tags=["Authentication"])
+app.include_router(register.router, prefix="/auth/register", tags=["Authentication"])
+app.include_router(login.router, prefix="/auth/login", tags=["Authentication"])
+app.include_router(keys.router, prefix="/keys", tags=["Keys"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
 
 

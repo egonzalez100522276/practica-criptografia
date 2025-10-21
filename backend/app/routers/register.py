@@ -1,6 +1,8 @@
 # backend/routers/user.py
+from base64 import b64encode
 from fastapi import APIRouter, HTTPException, status, Body
 from ..schemas import user as user_schema
+from ..schemas import keys as key_schema
 from ..services import user_service
 from ..core.security import get_password_hash
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -45,47 +47,52 @@ def generate_user_keys(password: str):
 
     return public_pem, encrypted_private_key, salt, nonce
 
+
+
 @router.post("/", response_model=user_schema.UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user_data: user_schema.UserCreate = Body(...)):
     """
-    Register a new user in the Database, generating a pair of AES keys.
+    Register a new user, generate RSA key pair, encrypt private key, and save everything in DB.
     """
 
     # 1. Check if username or email already exist
     if user_service.get_user_by_username(user_data.username):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
-    
     if user_service.get_user_by_email(user_data.email):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
-
-    # 2. Hash the password securely using Argon2
+    # 2. Hash password
     hashed_password = get_password_hash(user_data.password)
 
     try:
-        # 3. Save user in the database
+        # 3. Save user in DB
         created_user = user_service.create_user(
             username=user_data.username,
             email=user_data.email,
-            role='spy',
+            role='agent',
             password_hash=hashed_password
         )
 
-        # 4. Generate RSA key pair and encrypt the private key
+        # 4. Generate RSA key pair
         public_pem, encrypted_private_key, salt, nonce = generate_user_keys(user_data.password)
 
-        # 5. Save public key in user_keys table
-        user_service.save_user_public_key(user_id=created_user.id, public_key=public_pem)
-
-        # 6. Save encrypted private key in user_private_keys table
-        user_service.save_user_private_key(
+        # 5. Save public key using schema
+        public_key_obj = key_schema.UserPublicKey(
             user_id=created_user.id,
-            encrypted_private_key=encrypted_private_key,
-            salt=salt,
-            nonce=nonce
+            public_key=public_pem
         )
+        user_service.save_user_public_key(**public_key_obj.dict())
 
-        # 7. Return the created user
+        # 6. Save encrypted private key using schema
+        private_key_obj = key_schema.UserPrivateKey(
+            user_id=created_user.id,
+            encrypted_private_key=b64encode(encrypted_private_key).decode(),
+            salt=b64encode(salt).decode(),
+            nonce=b64encode(nonce).decode()
+        )
+        user_service.save_user_private_key(**private_key_obj.dict())
+
+        # 7. Return created user
         return created_user
 
     except Exception as e:

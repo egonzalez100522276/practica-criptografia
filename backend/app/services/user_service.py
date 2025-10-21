@@ -1,5 +1,13 @@
 from app.db.database import get_connection
 
+class UserObj:
+    def __init__(self, id, username, email, role):
+        self.id = id
+        self.username = username
+        self.email = email
+        self.role = role
+
+
 def create_user(username: str, email: str, role: str, password_hash: str) -> dict:
     """
     Creates a new user in the database.
@@ -14,7 +22,9 @@ def create_user(username: str, email: str, role: str, password_hash: str) -> dic
         """, (username, email, role, password_hash))
         user_id = cursor.lastrowid
         conn.commit()
-        return {"id": user_id, "username": username, "email": email, "role": role}
+
+        # Return the user data inside an object
+        return UserObj(user_id, username, email, role)
     except Exception as e:
         conn.rollback()
         raise e
@@ -49,6 +59,31 @@ def save_user_private_key(user_id: int, encrypted_private_key: bytes, salt: byte
         conn.commit()
     finally:
         conn.close()
+
+def get_user_public_key(user_id: int):
+    """
+    Finds a user's public key by user_id.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
+    cursor.execute("SELECT * FROM user_keys WHERE user_id = ?", (user_id,))
+    key = cursor.fetchone()
+    conn.close()
+    return key
+
+def get_user_private_key(user_id: int):
+    """
+    Finds a user's private key data by user_id.
+    """
+    conn = get_connection()
+    # Using dictionary=True to get column names
+    cursor = conn.cursor()
+    cursor.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
+    cursor.execute("SELECT * FROM user_private_keys WHERE user_id = ?", (user_id,))
+    key = cursor.fetchone()
+    conn.close()
+    return key
 
 
 
@@ -86,3 +121,11 @@ def get_users() -> list:
     
     users = [dict(row) for row in rows]
     return users
+
+
+def delete_user(user_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
