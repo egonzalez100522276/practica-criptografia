@@ -167,13 +167,13 @@ function App() {
     setCurrentUser(null);
     setToken(null);
     console.log("DEBUG: Logging out. Removing JWT from localStorage.");
-    localStorage.removeItem("jwt_token"); // Eliminar de localStorage
+    localStorage.removeItem("jwt_token"); // Delete from localStorage
     setCurrentView("login");
     showNotification("success", "Logged out successfully.");
   };
 
   if (isLoading) {
-    return <div>Loading session...</div>; // O un spinner de carga
+    return <div>Loading session...</div>;
   }
 
   return (

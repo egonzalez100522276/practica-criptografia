@@ -8,8 +8,8 @@ from ..core.security import get_password_hash, create_access_token, ACCESS_TOKEN
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from datetime import timedelta
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM 
+from datetime import timedelta, datetime, timezone
 import os
 
 router = APIRouter()
@@ -95,10 +95,14 @@ def register_user(user_data: user_schema.UserCreate = Body(...)):
 
         # 7. Create and return an access token for the newly registered user
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire_time = datetime.now(timezone.utc) + access_token_expires
         access_token = create_access_token(
-            data={"sub": created_user.username, "user_id": created_user.id, "role": created_user.role},
-            expires_delta=access_token_expires
+            data={"sub": created_user.username, "user_id": created_user.id, "role": created_user.role, "exp": expire_time}
         )
+
+        # 8. Save the session to the database
+        user_service.save_session(user_id=created_user.id, jwt_token=access_token, expires_at=expire_time)
+
         return {"access_token": access_token, "token_type": "bearer"}
 
     except Exception as e:

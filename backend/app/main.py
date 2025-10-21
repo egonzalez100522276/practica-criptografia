@@ -4,6 +4,7 @@ from .routers import register  # Import the auth router module
 from .routers import users  # Import the users router module
 from .routers import login  # Import the login router module
 from .routers import keys # Import the keys router module
+from .routers import sessions # Import the sessions router module
 
 # Crea la instancia principal de la aplicación FastAPI
 app = FastAPI(
@@ -32,6 +33,7 @@ app.add_middleware(
 app.include_router(register.router, prefix="/auth/register", tags=["Authentication"])
 app.include_router(login.router, prefix="/auth/login", tags=["Authentication"])
 app.include_router(keys.router, prefix="/keys", tags=["Keys"])
+app.include_router(sessions.router, prefix="/sessions", tags=["Sessions"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
 
 

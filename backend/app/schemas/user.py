@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, EmailStr
 
 # Schema for receiving user registration data from the frontend
@@ -23,3 +24,10 @@ class UserResponseWithPassword(UserResponse):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+class SessionResponse(BaseModel):
+    id: int
+    user_id: int
+    jwt_token: str
+    issued_at: datetime
+    expires_at: datetime
