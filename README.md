@@ -17,13 +17,14 @@ This guide will help you get the project running on your local machine for devel
 
 First, let's get the API server running.
 
-1.  **Navigate to the backend directory:**
+#### 1. **Navigate to the backend directory:**
 
     ```bash
     cd backend
     ```
 
-2.  **Create and activate a virtual environment:**
+#### 2. **Create and activate a virtual environment:**
+
     This isolates the project's Python dependencies. Since the `.venv` folder is not in the repository, you need to create it.
 
     ```bash
@@ -37,13 +38,24 @@ First, let's get the API server running.
     source .venv/bin/activate
     ```
 
-3.  **Install Python dependencies:**
+#### 3. **Install Python dependencies:**
 
     ```bash
     pip install -r requirements.txt
     ```
 
-4.  **Run the backend server:**
+#### 4. **Make sure the Database is set up**
+
+    Run the following command to initialize the database.
+
+    ```bash
+        python -m app.db.init_db
+    ```
+
+    > Note: this just creates the tables. If they are already created, YOU CAN STILL RUN THIS SAFELY AND THE EXISTING TABLES WILL BE IGNORED.
+
+#### 5. **Run the backend server:**
+
     ```bash
     uvicorn app.main:app --reload
     ```
