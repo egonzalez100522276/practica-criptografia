@@ -53,7 +53,7 @@ def create_tables() -> None:
         CREATE TABLE IF NOT EXISTS mission_access (
         mission_id INTEGER,
         user_id INTEGER,
-        encrypted_sym_key TEXT,
+        encrypted_sym_key TEXT,   -- cyphered with user's public key
         PRIMARY KEY (mission_id, user_id),
         FOREIGN KEY (mission_id) REFERENCES missions (id) ON DELETE CASCADE,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE

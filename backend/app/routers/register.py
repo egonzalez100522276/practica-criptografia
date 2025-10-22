@@ -48,7 +48,7 @@ def register_user(user_data: user_schema.UserCreate = Body(...)):
             user_id=created_user.id,
             public_key=public_pem
         )
-        user_service.save_user_public_key(**public_key_obj.dict())
+        user_service.save_user_public_key(**public_key_obj.model_dump())
 
         # 6. Save encrypted private key directly
         user_service.save_user_private_key(
