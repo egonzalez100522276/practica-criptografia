@@ -37,36 +37,52 @@ function App() {
 
   // Efecto para cargar el token y el usuario desde localStorage al iniciar la app
   useEffect(() => {
-    console.log("DEBUG: Checking for JWT in localStorage on page load...");
-    const storedToken = localStorage.getItem("jwt_token");
-    if (storedToken) {
-      console.log("DEBUG: JWT found in localStorage:", storedToken);
-      const payload = parseJwt(storedToken);
-      if (payload && payload.exp * 1000 > Date.now()) {
-        // Token válido y no expirado
-        console.log(
-          "DEBUG: JWT is valid. Restoring session for user:",
-          payload.sub
-        );
-        setToken(storedToken);
-        setCurrentUser({
-          id: payload.user_id,
-          username: payload.sub,
-          email: payload.email || "", // Asume que el email podría estar en el token o ser vacío
-          role: payload.role,
-        });
-        setCurrentView("dashboard");
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    const checkSession = async () => {
+      console.log("DEBUG: Checking for active session on page load...");
+      const storedToken = localStorage.getItem("jwt_token");
+
+      if (storedToken) {
+        try {
+          const response = await fetch(
+            "http://127.0.0.1:8000/sessions/validate",
+            {
+              headers: { Authorization: `Bearer ${storedToken}` },
+              signal, // Asocia la petición con el AbortController
+            }
+          );
+
+          if (response.ok) {
+            const user: User = await response.json();
+            console.log(
+              "DEBUG: Session is valid. Restoring for user:",
+              user.username
+            );
+            setToken(storedToken);
+            setCurrentUser(user);
+            setCurrentView("dashboard");
+          } else {
+            console.warn("DEBUG: Session validation failed. Removing token.");
+            localStorage.removeItem("jwt_token");
+          }
+        } catch (error: any) {
+          if (error.name !== "AbortError") {
+            console.error("DEBUG: Error validating session:", error);
+            localStorage.removeItem("jwt_token");
+          }
+        }
       } else {
-        // Token expirado o inválido, lo eliminamos
-        console.warn(
-          "DEBUG: JWT found but it is expired or invalid. Removing it."
-        );
-        localStorage.removeItem("jwt_token");
+        console.log("DEBUG: No token found. User is not logged in.");
       }
-    } else {
-      console.log("DEBUG: No JWT found in localStorage.");
-    }
-    setIsLoading(false); // La carga inicial ha terminado
+      setIsLoading(false);
+    };
+
+    checkSession();
+
+    // Función de limpieza: se ejecuta cuando el componente se desmonta
+    return () => controller.abort();
   }, []);
 
   const showNotification = (type: "success" | "error", message: string) => {
@@ -80,7 +96,7 @@ function App() {
       loginFormData.append("username", username);
       loginFormData.append("password", password);
 
-      const response = await fetch("http://127.0.0.1:8000/auth/login", {
+      const response = await fetch("http://127.0.0.1:8000/auth/login  ", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -98,7 +114,7 @@ function App() {
         setCurrentUser({
           id: payload.user_id,
           username: payload.sub,
-          email: "", // Email is not in the token, adjust if needed
+          email: "",
           role: payload.role,
         });
         setCurrentView("dashboard");

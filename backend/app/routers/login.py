@@ -28,13 +28,14 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
     # 3. If credentials are valid, create and return an access token.
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     expire_time = datetime.now(timezone.utc) + access_token_expires
+    
     access_token = create_access_token(
         # El 'sub' (subject) es un campo estándar en JWT para identificar al usuario
         data={"sub": user['username'], "user_id": user['id'], "role": user['role'], "exp": expire_time}
     )
 
+    
     # 4. Save the session to the database
-    session_service.save_session(user_id=user['id'], jwt_token=access_token, expires_at=expire_time)
+    session_service.save_session(user_id=user['id'], sub=user['username'], role=user['role'], jwt_token=access_token, expires_at=expire_time)
 
     return {"access_token": access_token, "token_type": "bearer"}
-

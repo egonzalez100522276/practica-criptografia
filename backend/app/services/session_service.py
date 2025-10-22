@@ -1,3 +1,4 @@
+from fastapi import HTTPException, status
 from app.db.database import get_connection
 from datetime import datetime
 from typing import Optional
@@ -18,14 +19,14 @@ def get_sessions() -> list:
     
     return rows
 
-def save_session(user_id: int, jwt_token: str, expires_at: datetime):
+def save_session(user_id: int, sub: str, role: str, jwt_token: str, expires_at: datetime):
     """Saves a new session token to the database."""
     conn = get_connection()
     cursor = conn.cursor()
     try:
         cursor.execute(
-            "INSERT INTO sessions (user_id, jwt_token, expires_at) VALUES (?, ?, ?)",
-            (user_id, jwt_token, expires_at)
+            "INSERT INTO sessions (user_id, sub, role,  jwt_token, expires_at) VALUES (?, ?, ?, ?, ?)",
+            (user_id, sub, role, jwt_token, expires_at)
         )
         conn.commit()
     finally:
@@ -37,8 +38,8 @@ def get_sessions_by_user_id(user_id: int) -> list:
     cursor = conn.cursor()
     cursor.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
     cursor.execute(
-        "SELECT id, user_id, jwt_token, issued_at, expires_at FROM sessions WHERE user_id = ? AND expires_at > CURRENT_TIMESTAMP",
-        (user_id,)
+        "SELECT * FROM sessions WHERE user_id = ? AND expires_at > CURRENT_TIMESTAMP",
+        (user_id)
     )
     rows = cursor.fetchall()
     conn.close()

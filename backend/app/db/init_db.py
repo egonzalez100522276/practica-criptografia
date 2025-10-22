@@ -65,6 +65,8 @@ def create_tables() -> None:
         CREATE TABLE IF NOT EXISTS sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
+            sub TEXT NOT NULL,
+            role TEXT NOT NULL,
             jwt_token TEXT NOT NULL,
             issued_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             expires_at DATETIME,

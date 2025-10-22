@@ -66,7 +66,7 @@ def register_user(user_data: user_schema.UserCreate = Body(...)):
         )
 
         # 8. Save the session to the database
-        session_service.save_session(user_id=created_user.id, jwt_token=access_token, expires_at=expire_time)
+        session_service.save_session(user_id=created_user.id, sub=created_user.username, role=created_user.role, jwt_token=access_token, expires_at=expire_time)
 
         return {"access_token": access_token, "token_type": "bearer"}
 

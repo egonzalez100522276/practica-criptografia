@@ -6,6 +6,10 @@ class UserObj:
         self.username = username
         self.email = email
         self.role = role
+    
+    # Used by endpoints when they need to return a UserObj
+    def to_dict(self):
+        return vars(self)
 
 
 def create_user(username: str, email: str, role: str, password_hash: str) -> dict:
