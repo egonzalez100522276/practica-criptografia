@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   CheckCircle2,
   ChevronDown,
@@ -29,33 +29,66 @@ export default function Dashboard({
   token,
   showNotification,
 }: DashboardProps) {
-  const [missions, setMissions] = useState<Mission[]>([
-    {
-      id: "1",
-      title: "Infiltrate Enemy Base",
-      description:
-        "Gather intelligence from the underground facility without being detected.",
-      createdBy: user.id.toString(),
-      assignedTo: user.id.toString(),
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "2",
-      title: "Decode Encrypted Message",
-      description:
-        "Use cipher key Alpha-7 to decrypt the intercepted communications.",
-      createdBy: "99", // Example other agent
-      assignedTo: user.id.toString(),
-      createdAt: new Date(Date.now() - 86400000).toISOString(),
-    },
-  ]);
-
+  const [missions, setMissions] = useState<Mission[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedMissionId, setSelectedMissionId] = useState<string | null>(
     null
   );
   const [activeTab, setActiveTab] = useState<"my" | "received">("my");
+
+  useEffect(() => {
+    const fetchMissions = async () => {
+      const storedToken = localStorage.getItem("jwt_token");
+      const privateKeyPem = localStorage.getItem("private_key_pem");
+
+      if (!storedToken || !privateKeyPem) {
+        showNotification(
+          "error",
+          "Session data is missing. Please log in again."
+        );
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          "http://127.0.0.1:8000/missions/mine/decrypt",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${storedToken}`,
+            },
+            body: JSON.stringify({ private_key_pem: privateKeyPem }),
+          }
+        );
+
+        if (response.ok) {
+          const decryptedMissionsData = await response.json();
+          const formattedMissions: Mission[] = decryptedMissionsData.map(
+            (m: any) => ({
+              id: m.id.toString(),
+              title: m.content.title,
+              description: m.content.description,
+              createdBy: m.creator_id.toString(),
+              assignedTo: m.creator_id.toString(), // For now, assignedTo is the creator
+              createdAt: new Date().toISOString(), // Backend doesn't provide this yet
+            })
+          );
+          setMissions(formattedMissions);
+        } else {
+          showNotification("error", "Failed to fetch missions.");
+        }
+      } catch (error) {
+        showNotification(
+          "error",
+          "Could not connect to the server to fetch missions."
+        );
+      }
+    };
+
+    fetchMissions();
+  }, [token, showNotification]); // Re-fetch if token changes
 
   const myMissions = missions.filter((m) => m.createdBy === user.id.toString());
   const receivedMissions = missions.filter(
