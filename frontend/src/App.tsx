@@ -226,13 +226,13 @@ function App() {
         <Dashboard
           user={currentUser}
           onLogout={handleLogout}
-          onSwitchToAdmin={() => setCurrentView("admin")}
+          onSwitchToAdmin={() => undefined}
         />
       )}
 
       {currentView === "admin" &&
         currentUser &&
-        currentUser.role === "admin" && (
+        currentUser.role === "leader" && (
           <AdminPanel
             user={currentUser}
             onBack={() => setCurrentView("dashboard")}
