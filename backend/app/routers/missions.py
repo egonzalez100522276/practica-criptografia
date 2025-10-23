@@ -26,3 +26,23 @@ def create_mission(
     """
     created_mission = missions_service.create_mission(cursor, content=mission_data.content, creator_id=current_user['id'])
     return created_mission
+
+@router.post("/{mission_id}/decrypt", response_model=mission_schema.MissionResponse)
+def decrypt_mission_endpoint(
+    mission_id: int,
+    body: mission_schema.MissionDecryptRequest,
+    current_user: user_schema.UserResponse = Depends(get_current_user),
+    cursor = Depends(get_db)
+):
+    """
+    Provisional endpoint to test mission decryption.
+    Requires the user's password in the request body to decrypt their private key.
+    """
+    decrypted_mission = missions_service.decrypt_mission(
+        cursor, mission_id=mission_id, user_id=current_user['id'], password=body.password
+    )
+
+    if not decrypted_mission:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Could not decrypt mission. Check if you have access or if the password is correct.")
+
+    return decrypted_mission

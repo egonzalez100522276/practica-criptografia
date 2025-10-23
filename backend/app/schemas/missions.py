@@ -17,3 +17,6 @@ class MissionInDB(BaseModel):
 class MissionResponse(MissionCreate):
     id: int
     creator_id: int
+
+class MissionDecryptRequest(BaseModel):
+    password: str

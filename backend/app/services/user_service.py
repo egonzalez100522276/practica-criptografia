@@ -54,7 +54,7 @@ def get_user_private_key(cursor, user_id: int):
     Finds a user's private key data by user_id.
     """
     cursor.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
-    cursor.execute("SELECT * FROM user_private_keys WHERE user_id = ?", (user_id,))
+    cursor.execute("SELECT private_key_encrypted FROM user_private_keys WHERE user_id = ?", (user_id,))
     key = cursor.fetchone()
     return key
 
