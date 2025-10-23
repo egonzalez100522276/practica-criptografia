@@ -1,16 +1,17 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from ..schemas import keys as key_schema
 from ..services import user_service
+from ..db.database import get_db
 
 router = APIRouter()
 
 @router.get("/{user_id}", response_model=key_schema.UserKeysResponse, status_code=status.HTTP_200_OK)
-def get_user_keys(user_id: int):
+def get_user_keys(user_id: int, cursor = Depends(get_db)):
     """
     Retrieves the public and encrypted private keys for a specific user.
     """
-    public_key_data = user_service.get_user_public_key(user_id)
-    private_key_data = user_service.get_user_private_key(user_id)
+    public_key_data = user_service.get_user_public_key(cursor, user_id)
+    private_key_data = user_service.get_user_private_key(cursor, user_id)
 
     if not public_key_data or not private_key_data:
         raise HTTPException(

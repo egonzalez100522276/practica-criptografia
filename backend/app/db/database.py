@@ -13,3 +13,19 @@ def get_connection():
     conn.execute("PRAGMA foreign_keys = ON;")
     conn.row_factory = sqlite3.Row
     return conn
+
+def get_db():
+    """
+    FastAPI dependency to get a DB connection and handle transactions.
+    This will automatically commit on success or rollback on failure.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        yield cursor
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()

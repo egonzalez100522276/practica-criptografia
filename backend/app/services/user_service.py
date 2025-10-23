@@ -12,153 +12,102 @@ class UserObj:
         return vars(self)
 
 
-def create_user(username: str, email: str, role: str, password_hash: str) -> dict:
+def create_user(cursor, username: str, email: str, role: str, password_hash: str) -> dict:
     """
-    Creates a new user in the database.
+    Creates a new user in the database using the provided cursor.
+    Does NOT commit the transaction.
     """
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    try:
-        cursor.execute("""
-            INSERT INTO users (username, email, role, password_hash)
-            VALUES (?, ?, ?, ?); 
-        """, (username, email, role, password_hash))
-        user_id = cursor.lastrowid
-        conn.commit()
-
-        # Return the user data inside an object
-        return UserObj(user_id, username, email, role)
-    except Exception as e:
-        conn.rollback()
-        raise e
-    finally:
-        conn.close()
-
-def save_user_public_key(user_id: int, public_key: str):
-    """ Insert public key into DB """
-    conn = get_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            INSERT INTO user_keys (user_id, public_key)
-            VALUES (?, ?)
-        """, (user_id, public_key))
-        conn.commit()
-    finally:
-        conn.close()
+    cursor.execute("""
+        INSERT INTO users (username, email, role, password_hash)
+        VALUES (?, ?, ?, ?); 
+    """, (username, email, role, password_hash))
+    user_id = cursor.lastrowid
+    # Return the user data inside an object
+    return UserObj(user_id, username, email, role)
 
 
-def save_user_private_key(user_id: int, encrypted_private_key: bytes):
-    """ 
-    Insert private key into DB
-    """
-    conn = get_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            INSERT INTO user_private_keys (user_id, private_key_encrypted)
-            VALUES (?, ?)
-        """, (user_id, encrypted_private_key))
-        conn.commit()
-    finally:
-        conn.close()
+def save_user_public_key(cursor, user_id: int, public_key: str):
+    """ Insert public key into DB using the provided cursor. Does NOT commit. """
+    cursor.execute("""
+        INSERT INTO user_keys (user_id, public_key)
+        VALUES (?, ?) 
+    """, (user_id, public_key))
 
-def get_user_public_key(user_id: int):
+def save_user_private_key(cursor, user_id: int, encrypted_private_key: str):
+    """ Insert private key into DB using the provided cursor. Does NOT commit. """
+    cursor.execute("""
+        INSERT INTO user_private_keys (user_id, private_key_encrypted)
+        VALUES (?, ?)
+    """, (user_id, encrypted_private_key))
+
+def get_user_public_key(cursor, user_id: int):
     """
     Finds a user's public key by user_id.
     """
-    conn = get_connection()
-    cursor = conn.cursor()
     cursor.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
     cursor.execute("SELECT * FROM user_keys WHERE user_id = ?", (user_id,))
     key = cursor.fetchone()
-    conn.close()
     return key
 
-def get_user_private_key(user_id: int):
+def get_user_private_key(cursor, user_id: int):
     """
     Finds a user's private key data by user_id.
     """
-    conn = get_connection()
-    # Using dictionary=True to get column names
-    cursor = conn.cursor()
     cursor.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
     cursor.execute("SELECT * FROM user_private_keys WHERE user_id = ?", (user_id,))
     key = cursor.fetchone()
-    conn.close()
     return key
 
-def get_user_by_id(user_id: int):
+def get_user_by_id(cursor, user_id: int):
     """
     Finds a user by ID.
     """
-    conn = get_connection()
-    cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
     user = cursor.fetchone()
-    conn.close()
     return dict(user) if user else None
 
 
-def get_user_by_username(username: str):
+def get_user_by_username(cursor, username: str):
     """
     Finds a user by username.
     """
-    conn = get_connection()
-    cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
     user = cursor.fetchone()
-    conn.close()
     return dict(user) if user else None
 
-def get_user_by_email(email: str):
+def get_user_by_email(cursor, email: str):
     """
     Finds a user by email.
     """
-    conn = get_connection()
-    cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
     user = cursor.fetchone()
-    conn.close()
     return dict(user) if user else None
 
-def get_users() -> list:
+def get_users(cursor) -> list:
     """
     Retrieves all users from the database.
     """
-    conn = get_connection()
-    cursor = conn.cursor()
     cursor.execute("SELECT * FROM users")
     rows = cursor.fetchall()
-    conn.close()
-    
     users = [dict(row) for row in rows]
     return users
 
-def get_admins() -> list:
+def get_admins(cursor) -> list:
     """
     Retrieves all admins from the database.
     """
-    conn = get_connection()
-    cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE role = 'leader'")
     rows = cursor.fetchall()
-    conn.close()
     admins = [dict(row) for row in rows]
     return admins
 
 
-def delete_user(user_id: int) -> bool:
+def delete_user(cursor, user_id: int) -> bool:
     """
     Deletes a user from the database by their ID. Returns True if successful.
     """
-    conn = get_connection()
-    cursor = conn.cursor()
     user_exists = cursor.execute("SELECT 1 FROM users WHERE id = ?", (user_id,)).fetchone()
     if not user_exists:
         return False
     cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    conn.commit()
-    conn.close()
     return True
