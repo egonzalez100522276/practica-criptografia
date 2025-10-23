@@ -188,14 +188,51 @@ function App() {
     showNotification("success", "Logged out successfully.");
   };
 
-  if (isLoading) {
-    return <div>Loading session...</div>;
-  }
+  const renderView = () => {
+    if (isLoading) {
+      return <div>Loading session...</div>;
+    }
+    switch (currentView) {
+      case "login":
+        return (
+          <Login
+            onLogin={handleLogin}
+            onSwitchToRegister={() => setCurrentView("register")}
+          />
+        );
+      case "register":
+        return (
+          <Register
+            onRegister={handleRegister}
+            onSwitchToLogin={() => setCurrentView("login")}
+          />
+        );
+      case "dashboard":
+        return currentUser ? (
+          <Dashboard
+            user={currentUser}
+            onLogout={handleLogout}
+            onSwitchToAdmin={() => undefined}
+            token={token}
+            showNotification={showNotification}
+          />
+        ) : null;
+      case "admin":
+        return currentUser && currentUser.role === "leader" ? (
+          <AdminPanel
+            user={currentUser}
+            onBack={() => setCurrentView("dashboard")}
+          />
+        ) : null;
+      default:
+        return null;
+    }
+  };
 
   return (
     <>
       {notification && (
-        <div className="fixed top-4 right-4 z-50 animate-slide-up">
+        <div className="z-[9999] fixed top-4 right-4 animate-slide-up">
           <div
             className={`rounded-lg px-6 py-4 shadow-lg ${
               notification.type === "success"
@@ -208,38 +245,7 @@ function App() {
         </div>
       )}
 
-      {currentView === "login" && (
-        <Login
-          onLogin={handleLogin}
-          onSwitchToRegister={() => setCurrentView("register")}
-        />
-      )}
-
-      {currentView === "register" && (
-        <Register
-          onRegister={handleRegister}
-          onSwitchToLogin={() => setCurrentView("login")}
-        />
-      )}
-
-      {currentView === "dashboard" && currentUser && (
-        <Dashboard
-          user={currentUser}
-          onLogout={handleLogout}
-          onSwitchToAdmin={() => undefined}
-          token={token}
-          showNotification={showNotification}
-        />
-      )}
-
-      {currentView === "admin" &&
-        currentUser &&
-        currentUser.role === "leader" && (
-          <AdminPanel
-            user={currentUser}
-            onBack={() => setCurrentView("dashboard")}
-          />
-        )}
+      {renderView()}
     </>
   );
 }

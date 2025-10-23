@@ -39,8 +39,8 @@ def create_tables() -> None:
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS missions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            content_encrypted TEXT NOT NULL,    -- JSON with the mission content
-            iv TEXT,
+            content_encrypted TEXT NOT NULL,
+            iv TEXT NOT NULL, -- Initialization Vector (nonce) for AES-GCM
             creator_id INTEGER,
             FOREIGN KEY (creator_id) REFERENCES users (id) 
         );
@@ -51,7 +51,7 @@ def create_tables() -> None:
         CREATE TABLE IF NOT EXISTS mission_access (
         mission_id INTEGER,
         user_id INTEGER,
-        encrypted_sym_key TEXT,   -- cyphered with user's public key
+        encrypted_key TEXT,   -- cyphered with user's public key
         PRIMARY KEY (mission_id, user_id),
         FOREIGN KEY (mission_id) REFERENCES missions (id) ON DELETE CASCADE,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE

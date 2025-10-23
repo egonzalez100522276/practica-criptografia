@@ -45,7 +45,7 @@ def get_user_public_key(cursor, user_id: int):
     Finds a user's public key by user_id.
     """
     cursor.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
-    cursor.execute("SELECT * FROM user_keys WHERE user_id = ?", (user_id,))
+    cursor.execute("SELECT public_key FROM user_keys WHERE user_id = ?", (user_id,))
     key = cursor.fetchone()
     return key
 

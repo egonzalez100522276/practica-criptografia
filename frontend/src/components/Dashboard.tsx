@@ -71,7 +71,7 @@ export default function Dashboard({
 
     const missionContent = {
       content: { title, description },
-      assigned_user_ids: [], // Por ahora, solo se asigna al creador en el backend
+      // assigned_user_ids: [], // Eliminado: el backend no espera este campo directamente en el cuerpo principal
     };
 
     try {
@@ -99,10 +99,14 @@ export default function Dashboard({
         showNotification("success", "Mission created successfully!");
       } else {
         const errorData = await response.json();
-        showNotification(
-          "error",
-          `Failed to create mission: ${errorData.detail}`
-        );
+        // FastAPI 422 errors have a specific structure.
+        let errorMessage = "Failed to create mission.";
+        if (Array.isArray(errorData.detail)) {
+          errorMessage = `Validation Error: ${errorData.detail[0].msg}`;
+        } else if (typeof errorData.detail === "string") {
+          errorMessage = `Failed to create mission: ${errorData.detail}`;
+        }
+        showNotification("error", errorMessage);
       }
     } catch (error) {
       showNotification("error", "Could not connect to the server.");

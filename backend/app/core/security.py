@@ -10,9 +10,9 @@ from dotenv import load_dotenv
 # Cryptography functions
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM 
-
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 
 # Load .env
 dotenv_path = Path(__file__).resolve().parent.parent.parent / '.env'
@@ -122,7 +122,7 @@ def generate_user_keys(password: str) -> tuple[str, str]:
     return public_pem, encrypted_private_pem
 
 
-def decrypt_private_key(encrypted_private_key, salt, nonce, password):
+def decrypt_private_key(encrypted_private_key, password):
     """
     Decrypts a user's private key using the password they used to log in.
     Returns the private key object.
@@ -138,13 +138,13 @@ def decrypt_private_key(encrypted_private_key, salt, nonce, password):
         # This could fail if the password is wrong, or data is corrupt
         return None
 
-def encrypt_with_aes(content: str) -> tuple[str, str, str]:
+def encrypt_with_aes(content: str) -> tuple[str, str, bytes]: # Changed return type hint
     # Generate AES key
     aes_key = os.urandom(32)
     aesgcm = AESGCM(aes_key)
     nonce = os.urandom(12)
     
     # Encrypt content
-    encrypted_content = aesgcm.encrypt(nonce, content.encode("utf-8"), None)
+    encrypted_content = aesgcm.encrypt(nonce, content.encode("utf-8"), None) # content is str, encode to bytes
 
-    return encrypted_content.hex(), nonce.hex(), aes_key.hex()
+    return encrypted_content.hex(), nonce.hex(), aes_key # Return aes_key as bytes, others as hex strings
