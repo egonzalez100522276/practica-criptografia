@@ -92,7 +92,7 @@ def share_mission_endpoint(
 
     try:
         missions_service.share_mission(cursor, mission_id, current_user['id'], sharer_private_key, body.user_ids)
-        return {"message": f"Mission {mission_id} shared successfully with {len(body.user_ids)} user(s)."}
+        return {"message": f"Mission shared successfully with {len(body.user_ids)} user(s)."}
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
