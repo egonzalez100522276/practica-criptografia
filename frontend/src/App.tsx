@@ -111,6 +111,35 @@ function App() {
         localStorage.setItem("jwt_token", access_token); // Guardar en localStorage
 
         const payload = parseJwt(access_token);
+
+        // --- NEW: Decrypt and store private key ---
+        try {
+          const keyResponse = await fetch(
+            "http://127.0.0.1:8000/keys/decrypt",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ username, password }),
+            }
+          );
+          if (keyResponse.ok) {
+            const { private_key_pem } = await keyResponse.json();
+            localStorage.setItem("private_key_pem", private_key_pem);
+            console.log(
+              "DEBUG: Private key decrypted and stored in localStorage."
+            );
+          } else {
+            showNotification(
+              "error",
+              "Could not retrieve private key. Login failed."
+            );
+            return;
+          }
+        } catch (keyError) {
+          showNotification("error", "Failed to contact key service.");
+          return;
+        }
+
         setCurrentUser({
           id: payload.user_id,
           username: payload.sub,
@@ -184,6 +213,7 @@ function App() {
     setToken(null);
     console.log("DEBUG: Logging out. Removing JWT from localStorage.");
     localStorage.removeItem("jwt_token"); // Delete from localStorage
+    localStorage.removeItem("private_key_pem"); // Delete private key on logout
     setCurrentView("login");
     showNotification("success", "Logged out successfully.");
   };

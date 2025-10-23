@@ -69,7 +69,7 @@ def create_mission(cursor, content: MissionContent, creator_id: int) -> dict: # 
     return {"id": mission_id, "content": content.model_dump(), "creator_id": creator_id} # Return original content for response
 
 
-def decrypt_mission(cursor, mission_id: int, user_id: int, password: str) -> dict | None:
+def decrypt_mission(cursor, mission_id: int, user_id: int, user_private_key) -> dict | None:
     """
     Decrypts the content of a mission for a specific user.
     Returns the decrypted mission content or None if access is denied or an error occurs.
@@ -79,12 +79,6 @@ def decrypt_mission(cursor, mission_id: int, user_id: int, password: str) -> dic
     mission = cursor.fetchone()
     if not mission:
         return None
-    
-    # 2. Retrieve the user's encrypted private key and decrypt it with their password
-    private_key_data = user_service.get_user_private_key(cursor, user_id)
-    if not private_key_data:
-        return None
-    user_private_key = decrypt_private_key(private_key_data['private_key_encrypted'], password)
     if not user_private_key:
         # This likely means a wrong password was provided
         return None
@@ -113,17 +107,15 @@ def decrypt_mission(cursor, mission_id: int, user_id: int, password: str) -> dic
     # 6. Return the full mission object with the decrypted content
     return {"id": mission['id'], "creator_id": mission['creator_id'], "content": json.loads(decrypted_content_json)}
 
-def decrypt_missions(cursor, missions: list, user_id: int, password: str) -> list:
+def decrypt_missions(cursor, missions: list, user_id: int, user_private_key) -> list:
     """
     Iterates over a list of missions and decrypts each one for the given user.
     Skips missions that cannot be decrypted (e.g., wrong password, no access).
     """
     decrypted_list = []
     for mission in missions:
-        decrypted_mission = decrypt_mission(cursor, mission['id'], user_id, password)
+        decrypted_mission = decrypt_mission(cursor, mission['id'], user_id, user_private_key)
         if decrypted_mission:
             decrypted_list.append(decrypted_mission)
     
     return decrypted_list
-    
-    

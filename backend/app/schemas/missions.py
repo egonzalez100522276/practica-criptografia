@@ -20,3 +20,6 @@ class MissionResponse(MissionCreate):
 
 class MissionDecryptRequest(BaseModel):
     password: str
+
+class MissionDecryptWithKeyRequest(BaseModel):
+    private_key_pem: str
