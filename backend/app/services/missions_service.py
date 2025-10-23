@@ -15,6 +15,16 @@ def get_missions(cursor) -> list:
     missions = [dict(row) for row in rows]
     return missions
 
+def get_missions_by_creator(cursor, creator_id: int) -> list:
+    """
+    Retrieves all missions created by a specific user.
+    """
+    cursor.execute("SELECT * FROM missions WHERE creator_id = ?", (creator_id,))
+    rows = cursor.fetchall()
+    missions = [dict(row) for row in rows]
+    return missions
+
+
 def create_mission(cursor, content: MissionContent, creator_id: int) -> dict: # Changed content type
     """
     Creates a new mission, encrypts its content, and grants access to specified users.
@@ -102,3 +112,18 @@ def decrypt_mission(cursor, mission_id: int, user_id: int, password: str) -> dic
     
     # 6. Return the full mission object with the decrypted content
     return {"id": mission['id'], "creator_id": mission['creator_id'], "content": json.loads(decrypted_content_json)}
+
+def decrypt_missions(cursor, missions: list, user_id: int, password: str) -> list:
+    """
+    Iterates over a list of missions and decrypts each one for the given user.
+    Skips missions that cannot be decrypted (e.g., wrong password, no access).
+    """
+    decrypted_list = []
+    for mission in missions:
+        decrypted_mission = decrypt_mission(cursor, mission['id'], user_id, password)
+        if decrypted_mission:
+            decrypted_list.append(decrypted_mission)
+    
+    return decrypted_list
+    
+    

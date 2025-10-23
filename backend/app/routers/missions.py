@@ -46,3 +46,17 @@ def decrypt_mission_endpoint(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Could not decrypt mission. Check if you have access or if the password is correct.")
 
     return decrypted_mission
+
+@router.get("/mine", response_model=list[mission_schema.MissionResponse])
+def get_and_decrypt_my_missions(
+    body: mission_schema.MissionDecryptRequest,
+    current_user: user_schema.UserResponse = Depends(get_current_user),
+    cursor = Depends(get_db)
+):
+    """
+    Retrieves all missions created by the currently authenticated user and decrypts them.
+    Requires the user's password in the request body.
+    """
+    missions = missions_service.get_missions_by_creator(cursor, creator_id=current_user['id'])
+    return missions_service.decrypt_missions(cursor, missions, current_user['id'], body.password)
+    
