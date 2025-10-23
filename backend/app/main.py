@@ -1,12 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import register  # Import the auth router module
-from .routers import users  # Import the users router module
-from .routers import login  # Import the login router module
-from .routers import keys # Import the keys router module
-from .routers import sessions # Import the sessions router module
 
-# Crea la instancia principal de la aplicación FastAPI
+from .routers import missions
+from .routers import register  
+from .routers import users
+from .routers import login 
+from .routers import keys
+from .routers import sessions
+
+# Create main instance of the FastAPI app
 app = FastAPI(
     title="Spy Agency API",
     description="In this API you will find how to interact with the backend, mostly to use cryptography-related functions.",
@@ -35,6 +37,7 @@ app.include_router(login.router, prefix="/auth/login", tags=["Authentication"])
 app.include_router(keys.router, prefix="/keys", tags=["Keys"])
 app.include_router(sessions.router, prefix="/sessions", tags=["Sessions"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
+app.include_router(missions.router, prefix="/missions", tags=["Missions"])
 
 
 @app.get("/", tags=["Root"])

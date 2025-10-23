@@ -2,8 +2,8 @@
 
 ### High priority
 
-- **[ ] Create API endpoint to create admin users**
-- **[ ] Create API endpoint to share missions**
+- **[x] Create API endpoint to create admin users**
+- **[x] Create API endpoint to share missions**
 - **[ ] Make sure to add access to every admin user whenever a mission is created**
 
 ### Low priority

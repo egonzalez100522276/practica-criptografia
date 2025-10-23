@@ -1,4 +1,3 @@
-from fastapi import HTTPException, status
 from app.db.database import get_connection
 from datetime import datetime
 from typing import Optional
