@@ -136,6 +136,18 @@ def get_users() -> list:
     users = [dict(row) for row in rows]
     return users
 
+def get_admins() -> list:
+    """
+    Retrieves all admins from the database.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE role = 'leader'")
+    rows = cursor.fetchall()
+    conn.close()
+    admins = [dict(row) for row in rows]
+    return admins
+
 
 def delete_user(user_id: int) -> bool:
     """

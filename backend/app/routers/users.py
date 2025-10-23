@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, status
 from ..schemas import user as user_schema
 from ..services import user_service
 
@@ -14,6 +14,11 @@ def get_users():
     users = user_service.get_users()
     return users
 
+@router.get("/admins", response_model=list[user_schema.UserResponse])
+def get_admins():
+    admins = user_service.get_admins()
+    return admins
+
 @router.get("/{user_id}", response_model=user_schema.UserResponseWithPassword)
 def get_user_by_id(user_id: int):
     """
@@ -21,9 +26,8 @@ def get_user_by_id(user_id: int):
     """
     user = user_service.get_user_by_id(user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
-
 
 @router.delete("/{user_id}")
 def delete_user(user_id: int):
