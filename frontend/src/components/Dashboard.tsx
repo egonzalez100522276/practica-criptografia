@@ -325,12 +325,16 @@ export default function Dashboard({
       {showShareModal && selectedMissionId && (
         <ShareMissionModal
           mission={missions.find((m) => m.id === selectedMissionId)!}
+          currentUser={user}
+          token={token}
+          showNotification={showNotification}
           onClose={() => {
             setShowShareModal(false);
             setSelectedMissionId(null);
           }}
-          onShare={() => {
+          onShare={(selectedUserIds) => {
             setShowShareModal(false);
+            console.log("Sharing mission with users:", selectedUserIds); // Placeholder for now
             setSelectedMissionId(null);
           }}
         />

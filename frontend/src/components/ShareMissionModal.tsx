@@ -1,111 +1,169 @@
-import { useState } from 'react';
-import { X, Send, Users } from 'lucide-react';
-import { Mission } from '../types';
+import { useState, useEffect } from "react";
+import { Mission, User } from "../types";
+import { X, Search } from "lucide-react";
 
 interface ShareMissionModalProps {
   mission: Mission;
   onClose: () => void;
-  onShare: (agentId: string, message: string) => void;
+  onShare: (selectedUserIds: string[]) => void;
+  token: string | null;
+  showNotification: (type: "success" | "error", message: string) => void;
+  currentUser: User;
 }
 
-export default function ShareMissionModal({ mission, onClose, onShare }: ShareMissionModalProps) {
-  const [selectedAgent, setSelectedAgent] = useState('');
-  const [message, setMessage] = useState('');
+export default function ShareMissionModal({
+  mission,
+  onClose,
+  onShare,
+  token,
+  showNotification,
+  currentUser,
+}: ShareMissionModalProps) {
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const availableAgents = [
-    { id: 'agent-001', name: 'Agent Shadow', status: 'online' },
-    { id: 'agent-002', name: 'Agent Phantom', status: 'offline' },
-    { id: 'agent-003', name: 'Agent Viper', status: 'online' },
-    { id: 'agent-004', name: 'Agent Raven', status: 'online' },
-  ];
+  useEffect(() => {
+    const fetchUsers = async () => {
+      if (!token) {
+        showNotification("error", "Authentication token is missing.");
+        return;
+      }
+      try {
+        const response = await fetch("http://127.0.0.1:8000/users/", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selectedAgent && message.trim()) {
-      onShare(selectedAgent, message);
-    }
+        if (response.ok) {
+          const allUsers: User[] = await response.json();
+          // Filter out the current user from the list
+          const otherUsers = allUsers.filter((u) => u.id !== currentUser.id);
+          setUsers(otherUsers);
+        } else {
+          showNotification("error", "Failed to fetch users.");
+        }
+      } catch (error) {
+        showNotification(
+          "error",
+          "Could not connect to the server to fetch users."
+        );
+      }
+    };
+
+    fetchUsers();
+  }, [token, showNotification, currentUser.id]);
+
+  const handleToggleUser = (userId: string) => {
+    setSelectedUserIds((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
   };
 
+  const filteredUsers = users.filter((user) =>
+    user.username.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div className="bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 w-full max-w-lg animate-scale-in">
-        <div className="flex items-center justify-between p-6 border-b border-slate-700">
-          <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-br from-red-600 to-orange-600 rounded-lg p-2">
-              <Send className="w-5 h-5 text-white" />
-            </div>
-            <h2 className="text-xl font-bold text-white">Share Mission</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white transition"
-          >
-            <X className="w-6 h-6" />
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-lg w-full max-w-md p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-white">
+            Share Mission: "{mission.title}"
+          </h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white">
+            <X />
           </button>
         </div>
 
-        <div className="p-6">
-          <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-4 mb-6">
-            <h3 className="text-white font-semibold mb-1">{mission.title}</h3>
-            <p className="text-slate-400 text-sm">{mission.description}</p>
-          </div>
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Search agents..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-slate-900/50 border border-slate-700 rounded-lg pl-11 pr-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-600"
+          />
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label htmlFor="agent-select" className="block text-sm font-medium text-slate-300 mb-2">
-                Select Agent
-              </label>
-              <div className="relative">
-                <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-500 pointer-events-none" />
-                <select
-                  id="agent-select"
-                  value={selectedAgent}
-                  onChange={(e) => setSelectedAgent(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-slate-700 rounded-lg pl-11 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent transition appearance-none"
-                  required
-                >
-                  <option value="">Choose an agent...</option>
-                  {availableAgents.map((agent) => (
-                    <option key={agent.id} value={agent.id}>
-                      {agent.name} ({agent.status})
-                    </option>
-                  ))}
-                </select>
-              </div>
+        <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+          {filteredUsers.map((user) => (
+            <div
+              key={user.id}
+              onClick={() => handleToggleUser(user.id.toString())}
+              className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition ${
+                selectedUserIds.includes(user.id.toString())
+                  ? "bg-red-600/20 border border-red-500"
+                  : "bg-slate-700/50 hover:bg-slate-700"
+              }`}
+            >
+              <span className="text-white font-medium">{user.username}</span>
+              <span className="text-xs text-slate-400">{user.role}</span>
             </div>
+          ))}
+        </div>
 
-            <div>
-              <label htmlFor="share-message" className="block text-sm font-medium text-slate-300 mb-2">
-                Encrypted Message
-              </label>
-              <textarea
-                id="share-message"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Add a classified message for the agent..."
-                rows={4}
-                className="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent transition resize-none"
-                required
-              />
-            </div>
+        <div className="mt-6 flex justify-end space-x-4">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={async () => {
+              const privateKeyPem = localStorage.getItem("private_key_pem");
+              if (!token || !privateKeyPem) {
+                showNotification(
+                  "error",
+                  "Session data is missing. Please log in again."
+                );
+                return;
+              }
 
-            <div className="flex space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 rounded-lg transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="flex-1 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-semibold py-3 rounded-lg transition shadow-lg shadow-red-600/30 flex items-center justify-center space-x-2"
-              >
-                <Send className="w-4 h-4" />
-                <span>Send Mission</span>
-              </button>
-            </div>
-          </form>
+              try {
+                const response = await fetch(
+                  `http://127.0.0.1:8000/missions/${mission.id}/share`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                      user_ids: selectedUserIds.map((id) => parseInt(id, 10)),
+                      private_key_pem: privateKeyPem,
+                    }),
+                  }
+                );
+
+                if (response.ok) {
+                  const result = await response.json();
+                  showNotification("success", result.message);
+                  onShare(selectedUserIds);
+                } else {
+                  const errorData = await response.json();
+                  showNotification(
+                    "error",
+                    `Failed to share: ${errorData.detail}`
+                  );
+                }
+              } catch (error) {
+                showNotification(
+                  "error",
+                  "Could not connect to the server to share mission."
+                );
+              }
+            }}
+            disabled={selectedUserIds.length === 0}
+            className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition disabled:bg-slate-600 disabled:cursor-not-allowed"
+          >
+            Share
+          </button>
         </div>
       </div>
     </div>

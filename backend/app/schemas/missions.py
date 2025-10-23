@@ -23,3 +23,7 @@ class MissionDecryptRequest(BaseModel):
 
 class MissionDecryptWithKeyRequest(BaseModel):
     private_key_pem: str
+
+class MissionShareRequest(BaseModel):
+    user_ids: list[int]
+    private_key_pem: str

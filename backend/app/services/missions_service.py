@@ -119,3 +119,42 @@ def decrypt_missions(cursor, missions: list, user_id: int, user_private_key) -> 
             decrypted_list.append(decrypted_mission)
     
     return decrypted_list
+
+def share_mission(cursor, mission_id: int, sharer_id: int, sharer_private_key, target_user_ids: list[int]):
+    """
+    Shares a mission with a list of target users.
+    1. Decrypts the mission's AES key using the sharer's private key.
+    2. Re-encrypts the AES key for each target user using their public key.
+    3. Inserts the new access records into the database.
+    """
+    # 1. Get the encrypted AES key for the user who is sharing the mission
+    cursor.execute("SELECT encrypted_key FROM mission_access WHERE mission_id = ? AND user_id = ?", (mission_id, sharer_id))
+    access_data = cursor.fetchone()
+    if not access_data:
+        raise Exception("Sharer does not have access to this mission.")
+
+    # 2. Decrypt the AES key using the sharer's private key
+    encrypted_aes_key_for_sharer = access_data['encrypted_key']
+    aes_key = sharer_private_key.decrypt(
+        encrypted_aes_key_for_sharer,
+        padding.OAEP(mgf=padding.MGF1(algorithm=padding.hashes.SHA256()), algorithm=padding.hashes.SHA256(), label=None)
+    )
+
+    # 3. For each target user, get their public key and re-encrypt the AES key
+    for user_id in target_user_ids:
+        public_key_data = user_service.get_user_public_key(cursor, user_id)
+        if not public_key_data or not public_key_data.get('public_key'):
+            raise Exception(f"Could not find public key for user ID: {user_id}")
+
+        target_public_key = serialization.load_pem_public_key(public_key_data['public_key'].encode('utf-8'))
+
+        encrypted_aes_key_for_target = target_public_key.encrypt(
+            aes_key,
+            padding.OAEP(mgf=padding.MGF1(algorithm=padding.hashes.SHA256()), algorithm=padding.hashes.SHA256(), label=None)
+        )
+
+        # 4. Insert (or replace) the access record for the target user
+        cursor.execute(
+            "INSERT OR REPLACE INTO mission_access (mission_id, user_id, encrypted_key) VALUES (?, ?, ?)",
+            (mission_id, user_id, encrypted_aes_key_for_target)
+        )
