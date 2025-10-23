@@ -24,6 +24,19 @@ def get_missions_by_creator(cursor, creator_id: int) -> list:
     missions = [dict(row) for row in rows]
     return missions
 
+def get_shared_missions_for_user(cursor, user_id: int) -> list:
+    """
+    Retrieves all missions shared with a specific user, excluding those they created themselves.
+    """
+    cursor.execute("""
+        SELECT m.*
+        FROM missions m
+        JOIN mission_access ma ON m.id = ma.mission_id
+        WHERE ma.user_id = ? AND m.creator_id != ?
+    """, (user_id, user_id))
+    rows = cursor.fetchall()
+    missions = [dict(row) for row in rows]
+    return missions
 
 def create_mission(cursor, content: MissionContent, creator_id: int) -> dict: # Changed content type
     """

@@ -29,7 +29,8 @@ export default function Dashboard({
   token,
   showNotification,
 }: DashboardProps) {
-  const [missions, setMissions] = useState<Mission[]>([]);
+  const [myMissions, setMyMissions] = useState<Mission[]>([]);
+  const [receivedMissions, setReceivedMissions] = useState<Mission[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedMissionId, setSelectedMissionId] = useState<string | null>(
@@ -38,7 +39,7 @@ export default function Dashboard({
   const [activeTab, setActiveTab] = useState<"my" | "received">("my");
 
   useEffect(() => {
-    const fetchMissions = async () => {
+    const fetchAllMissions = async () => {
       const storedToken = localStorage.getItem("jwt_token");
       const privateKeyPem = localStorage.getItem("private_key_pem");
 
@@ -51,51 +52,59 @@ export default function Dashboard({
         return; // Stop further execution
       }
 
-      try {
-        const response = await fetch(
-          "http://127.0.0.1:8000/missions/mine/decrypt",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${storedToken}`,
-            },
-            body: JSON.stringify({ private_key_pem: privateKeyPem }),
-          }
-        );
-
-        if (response.ok) {
-          const decryptedMissionsData = await response.json();
-          const formattedMissions: Mission[] = decryptedMissionsData.map(
-            (m: any) => ({
-              id: m.id.toString(),
-              title: m.content.title,
-              description: m.content.description,
-              createdBy: m.creator_id.toString(),
-              assignedTo: m.creator_id.toString(), // For now, assignedTo is the creator
-              createdAt: new Date().toISOString(), // Backend doesn't provide this yet
-            })
+      const fetchEndpoint = async (
+        endpoint: string,
+        setter: React.Dispatch<React.SetStateAction<Mission[]>>
+      ) => {
+        try {
+          const response = await fetch(
+            `http://127.0.0.1:8000/missions${endpoint}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${storedToken}`,
+              },
+              body: JSON.stringify({ private_key_pem: privateKeyPem }),
+            }
           );
-          setMissions(formattedMissions);
-        } else {
-          showNotification("error", "Failed to fetch missions.");
+
+          if (response.ok) {
+            const decryptedMissionsData = await response.json();
+            const formattedMissions: Mission[] = decryptedMissionsData.map(
+              (m: any) => ({
+                id: m.id.toString(),
+                title: m.content.title,
+                description: m.content.description,
+                createdBy: m.creator_id.toString(),
+                assignedTo: user.id.toString(), // The current user is the assignee
+                createdAt: new Date().toISOString(), // Backend doesn't provide this yet
+              })
+            );
+            setter(formattedMissions);
+          } else {
+            showNotification(
+              "error",
+              `Failed to fetch missions from ${endpoint}.`
+            );
+          }
+        } catch (error) {
+          showNotification(
+            "error",
+            `Could not connect to the server to fetch missions from ${endpoint}.`
+          );
         }
-      } catch (error) {
-        showNotification(
-          "error",
-          "Could not connect to the server to fetch missions."
-        );
-      }
+      };
+
+      // Fetch both my missions and shared missions in parallel
+      Promise.all([
+        fetchEndpoint("/mine/decrypt", setMyMissions),
+        fetchEndpoint("/shared/decrypt", setReceivedMissions),
+      ]);
     };
 
-    fetchMissions();
-  }, [token, showNotification]); // Re-fetch if token changes
-
-  const myMissions = missions.filter((m) => m.createdBy === user.id.toString());
-  const receivedMissions = missions.filter(
-    (m) =>
-      m.createdBy !== user.id.toString() && m.assignedTo === user.id.toString()
-  );
+    fetchAllMissions();
+  }, [token, showNotification, onLogout, user.id]); // Re-fetch if token changes
 
   const handleCreateMission = async (title: string, description: string) => {
     if (!token) {
@@ -128,7 +137,7 @@ export default function Dashboard({
           assignedTo: newMissionData.creator_id.toString(),
           createdAt: new Date().toISOString(), // The backend doesn't return this, so we set it
         };
-        setMissions([newMission, ...missions]);
+        setMyMissions([newMission, ...myMissions]);
         setShowCreateModal(false);
         showNotification("success", "Mission created successfully!");
       } else {
@@ -324,7 +333,7 @@ export default function Dashboard({
 
       {showShareModal && selectedMissionId && (
         <ShareMissionModal
-          mission={missions.find((m) => m.id === selectedMissionId)!}
+          mission={myMissions.find((m) => m.id === selectedMissionId)!}
           currentUser={user}
           token={token}
           showNotification={showNotification}

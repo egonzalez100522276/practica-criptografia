@@ -95,4 +95,32 @@ def share_mission_endpoint(
         return {"message": f"Mission {mission_id} shared successfully with {len(body.user_ids)} user(s)."}
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+@router.get("/shared/", response_model=list[mission_schema.MissionInDB])
+def get_shared_with_me(
+    current_user: user_schema.UserResponse = Depends(get_current_user),
+    cursor = Depends(get_db)
+):
+    """
+    Retrieves all missions that have been shared with the currently authenticated user.
+    """
+    return missions_service.get_shared_missions_for_user(cursor, user_id=current_user['id'])
+
+@router.post("/shared/decrypt", response_model=list[mission_schema.MissionResponse])
+def get_and_decrypt_shared_missions(
+    body: mission_schema.MissionDecryptWithKeyRequest,
+    current_user: user_schema.UserResponse = Depends(get_current_user),
+    cursor = Depends(get_db)
+):
+    """
+    Retrieves and decrypts all missions shared with the currently authenticated user.
+    Requires the user's private key in PEM format in the request body.
+    """
+    try:
+        user_private_key = serialization.load_pem_private_key(body.private_key_pem.encode(), password=None)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid private key format.")
+
+    missions = missions_service.get_shared_missions_for_user(cursor, user_id=current_user['id'])
+    return missions_service.decrypt_missions(cursor, missions, current_user['id'], user_private_key)
     
