@@ -47,7 +47,8 @@ export default function Dashboard({
           "error",
           "Session data is missing. Please log in again."
         );
-        return;
+        onLogout(); // This will clear the session and redirect to login
+        return; // Stop further execution
       }
 
       try {

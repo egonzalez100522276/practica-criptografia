@@ -62,7 +62,7 @@ def create_mission(cursor, content: MissionContent, creator_id: int) -> dict: # 
     # 4. Save the encrypted AES key in the mission_access table for the creator
     cursor.execute(
         "INSERT INTO mission_access (mission_id, user_id, encrypted_key) VALUES (?, ?, ?)",
-        (mission_id, creator_id, encrypted_aes_key_for_creator.hex())
+        (mission_id, creator_id, encrypted_aes_key_for_creator)
     )
 
     # The content returned should be the original content, not the encrypted one.
@@ -91,7 +91,7 @@ def decrypt_mission(cursor, mission_id: int, user_id: int, user_private_key) -> 
         return None
     
     # 4. Decrypt the AES key using the user's private RSA key
-    encrypted_aes_key = bytes.fromhex(access_data['encrypted_key'])
+    encrypted_aes_key = access_data['encrypted_key']
     aes_key = user_private_key.decrypt(
         encrypted_aes_key,
         padding.OAEP(mgf=padding.MGF1(algorithm=padding.hashes.SHA256()), algorithm=padding.hashes.SHA256(), label=None)

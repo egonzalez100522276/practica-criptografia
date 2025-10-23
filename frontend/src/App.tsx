@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { User, ViewType } from "./types";
 import Login from "./components/Login";
 import Register from "./components/Register";
@@ -85,10 +85,13 @@ function App() {
     return () => controller.abort();
   }, []);
 
-  const showNotification = (type: "success" | "error", message: string) => {
-    setNotification({ type, message });
-    setTimeout(() => setNotification(null), 3000);
-  };
+  const showNotification = useCallback(
+    (type: "success" | "error", message: string) => {
+      setNotification({ type, message });
+      setTimeout(() => setNotification(null), 3000);
+    },
+    []
+  );
 
   const handleLogin = async (username: string, password: string) => {
     try {
@@ -184,6 +187,31 @@ function App() {
         localStorage.setItem("jwt_token", access_token); // Guardar en localStorage
         showNotification("success", "Registration successful! Logging in...");
 
+        // --- FIX: Decrypt and store private key after registration ---
+        try {
+          const keyResponse = await fetch(
+            "http://127.0.0.1:8000/keys/decrypt",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ username, password }),
+            }
+          );
+          if (keyResponse.ok) {
+            const { private_key_pem } = await keyResponse.json();
+            localStorage.setItem("private_key_pem", private_key_pem);
+            console.log(
+              "DEBUG: Private key decrypted and stored after registration."
+            );
+          } else {
+            throw new Error(
+              "Could not retrieve private key after registration."
+            );
+          }
+        } catch (keyError) {
+          throw new Error("Failed to contact key service after registration.");
+        }
+
         const payload = parseJwt(access_token);
         setCurrentUser({
           id: payload.user_id,
@@ -194,17 +222,14 @@ function App() {
         setCurrentView("dashboard");
       } else {
         const errorData = await response.json();
-        showNotification(
-          "error",
-          errorData.detail || "An unknown error occurred."
-        );
+        throw new Error(errorData.detail || "An unknown error occurred.");
       }
     } catch (err) {
-      console.error("Error de conexión:", err);
-      showNotification(
-        "error",
-        "Could not connect to the server. Please try again later."
-      );
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Could not connect to the server. Please try again later.";
+      showNotification("error", errorMessage);
     }
   };
 
