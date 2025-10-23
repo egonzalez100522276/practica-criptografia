@@ -1,14 +1,14 @@
 import { useState } from "react";
 import {
   CheckCircle2,
+  ChevronDown,
   Circle,
-  Clock,
   LogOut,
   Plus,
   Send,
   Shield,
   Target,
-  Users,
+  User as UserIcon,
 } from "lucide-react";
 import { User, Mission } from "../types";
 import CreateMissionModal from "./CreateMissionModal";
@@ -17,13 +17,17 @@ import ShareMissionModal from "./ShareMissionModal";
 interface DashboardProps {
   user: User;
   onLogout: () => void;
+  token: string | null;
   onSwitchToAdmin: () => void;
+  showNotification: (type: "success" | "error", message: string) => void;
 }
 
 export default function Dashboard({
   user,
   onLogout,
   onSwitchToAdmin,
+  token,
+  showNotification,
 }: DashboardProps) {
   const [missions, setMissions] = useState<Mission[]>([
     {
@@ -31,9 +35,8 @@ export default function Dashboard({
       title: "Infiltrate Enemy Base",
       description:
         "Gather intelligence from the underground facility without being detected.",
-      status: "pending",
-      createdBy: user.id,
-      assignedTo: user.id,
+      createdBy: user.id.toString(),
+      assignedTo: user.id.toString(),
       createdAt: new Date().toISOString(),
     },
     {
@@ -41,11 +44,9 @@ export default function Dashboard({
       title: "Decode Encrypted Message",
       description:
         "Use cipher key Alpha-7 to decrypt the intercepted communications.",
-      status: "completed",
-      createdBy: "other-agent",
-      assignedTo: user.id,
+      createdBy: "99", // Example other agent
+      assignedTo: user.id.toString(),
       createdAt: new Date(Date.now() - 86400000).toISOString(),
-      completedAt: new Date().toISOString(),
     },
   ]);
 
@@ -56,38 +57,57 @@ export default function Dashboard({
   );
   const [activeTab, setActiveTab] = useState<"my" | "received">("my");
 
-  const myMissions = missions.filter((m) => m.createdBy === user.id);
+  const myMissions = missions.filter((m) => m.createdBy === user.id.toString());
   const receivedMissions = missions.filter(
-    (m) => m.createdBy !== user.id && m.assignedTo === user.id
+    (m) =>
+      m.createdBy !== user.id.toString() && m.assignedTo === user.id.toString()
   );
 
-  const handleToggleMission = (missionId: string) => {
-    setMissions(
-      missions.map((m) =>
-        m.id === missionId
-          ? {
-              ...m,
-              status: m.status === "pending" ? "completed" : "pending",
-              completedAt:
-                m.status === "pending" ? new Date().toISOString() : undefined,
-            }
-          : m
-      )
-    );
-  };
+  const handleCreateMission = async (title: string, description: string) => {
+    if (!token) {
+      showNotification("error", "Authentication error. Please log in again.");
+      return;
+    }
 
-  const handleCreateMission = (title: string, description: string) => {
-    const newMission: Mission = {
-      id: Date.now().toString(),
-      title,
-      description,
-      status: "pending",
-      createdBy: user.id,
-      assignedTo: user.id,
-      createdAt: new Date().toISOString(),
+    const missionContent = {
+      content: { title, description },
+      assigned_user_ids: [], // Por ahora, solo se asigna al creador en el backend
     };
-    setMissions([newMission, ...missions]);
-    setShowCreateModal(false);
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/missions/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(missionContent),
+      });
+
+      if (response.ok) {
+        const newMissionData = await response.json();
+        const newMission: Mission = {
+          id: newMissionData.id.toString(),
+          title: newMissionData.content.title,
+          description: newMissionData.content.description,
+          createdBy: newMissionData.creator_id.toString(),
+          assignedTo: newMissionData.creator_id.toString(),
+          createdAt: new Date().toISOString(), // The backend doesn't return this, so we set it
+        };
+        setMissions([newMission, ...missions]);
+        setShowCreateModal(false);
+        showNotification("success", "Mission created successfully!");
+      } else {
+        const errorData = await response.json();
+        showNotification(
+          "error",
+          `Failed to create mission: ${errorData.detail}`
+        );
+      }
+    } catch (error) {
+      showNotification("error", "Could not connect to the server.");
+      console.error("Error creating mission:", error);
+    }
   };
 
   const handleShareMission = (missionId: string) => {
@@ -130,7 +150,7 @@ export default function Dashboard({
                   onClick={onSwitchToAdmin}
                   className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition flex items-center space-x-2"
                 >
-                  <Users className="w-4 h-4" />
+                  <UserIcon className="w-4 h-4" />
                   <span className="hidden sm:inline">Admin Panel</span>
                 </button>
               )}
@@ -206,12 +226,8 @@ export default function Dashboard({
           <div className="p-6">
             {displayedMissions.length === 0 ? (
               <div className="text-center py-12">
-                <Clock className="w-16 h-16 text-slate-600 mx-auto mb-4" />
                 <p className="text-slate-400 text-lg">
                   No missions in this category
-                </p>
-                <p className="text-slate-500 text-sm mt-2">
-                  Create a new mission to get started
                 </p>
               </div>
             ) : (
@@ -219,74 +235,26 @@ export default function Dashboard({
                 {displayedMissions.map((mission) => (
                   <div
                     key={mission.id}
-                    className={`bg-slate-900/50 border rounded-xl p-6 transition-all hover:border-red-600/50 ${
-                      mission.status === "completed"
-                        ? "border-green-600/30"
-                        : "border-slate-700/50"
-                    }`}
+                    className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-6 transition-all hover:border-red-600/50"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-start space-x-4">
-                          <button
-                            onClick={() => handleToggleMission(mission.id)}
-                            className="mt-1 focus:outline-none group"
-                          >
-                            {mission.status === "completed" ? (
-                              <CheckCircle2 className="w-6 h-6 text-green-500 group-hover:scale-110 transition-transform" />
-                            ) : (
-                              <Circle className="w-6 h-6 text-slate-500 group-hover:text-red-500 transition" />
-                            )}
-                          </button>
-
+                        <div className="flex items-start">
                           <div className="flex-1">
-                            <h3
-                              className={`text-lg font-semibold mb-2 ${
-                                mission.status === "completed"
-                                  ? "text-slate-400 line-through"
-                                  : "text-white"
-                              }`}
-                            >
+                            <h3 className="text-lg font-semibold mb-2 text-white">
                               {mission.title}
                             </h3>
-                            <p
-                              className={`text-sm mb-3 ${
-                                mission.status === "completed"
-                                  ? "text-slate-500"
-                                  : "text-slate-300"
-                              }`}
-                            >
+                            <p className="text-sm mb-3 text-slate-300">
                               {mission.description}
                             </p>
 
                             <div className="flex flex-wrap items-center gap-3 text-xs">
-                              <span
-                                className={`px-3 py-1 rounded-full font-medium ${
-                                  mission.status === "completed"
-                                    ? "bg-green-600/20 text-green-400 border border-green-600/30"
-                                    : "bg-orange-600/20 text-orange-400 border border-orange-600/30"
-                                }`}
-                              >
-                                {mission.status === "completed"
-                                  ? "Completed"
-                                  : "Pending"}
-                              </span>
-
                               <span className="text-slate-500">
                                 Created{" "}
                                 {new Date(
                                   mission.createdAt
                                 ).toLocaleDateString()}
                               </span>
-
-                              {mission.completedAt && (
-                                <span className="text-slate-500">
-                                  Completed{" "}
-                                  {new Date(
-                                    mission.completedAt
-                                  ).toLocaleDateString()}
-                                </span>
-                              )}
                             </div>
                           </div>
                         </div>

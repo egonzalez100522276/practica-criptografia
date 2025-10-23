@@ -227,6 +227,8 @@ function App() {
           user={currentUser}
           onLogout={handleLogout}
           onSwitchToAdmin={() => undefined}
+          token={token}
+          showNotification={showNotification}
         />
       )}
 

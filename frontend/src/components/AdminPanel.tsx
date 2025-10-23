@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { ArrowLeft, CheckCircle2, Circle, Filter, Search, Shield, User } from 'lucide-react';
-import { User as UserType, Mission } from '../types';
+import { useState } from "react";
+import { ArrowLeft, Filter, Search, Shield, User } from "lucide-react";
+import { User as UserType, Mission } from "../types";
 
 interface AdminPanelProps {
   user: UserType;
@@ -10,73 +10,62 @@ interface AdminPanelProps {
 export default function AdminPanel({ user, onBack }: AdminPanelProps) {
   const allMissions: Mission[] = [
     {
-      id: '1',
-      title: 'Infiltrate Enemy Base',
-      description: 'Gather intelligence from the underground facility without being detected.',
-      status: 'pending',
-      createdBy: 'agent-001',
-      assignedTo: 'agent-001',
+      id: "1",
+      title: "Infiltrate Enemy Base",
+      description:
+        "Gather intelligence from the underground facility without being detected.",
+      createdBy: "agent-001",
+      assignedTo: "agent-001",
       createdAt: new Date().toISOString(),
     },
     {
-      id: '2',
-      title: 'Decode Encrypted Message',
-      description: 'Use cipher key Alpha-7 to decrypt the intercepted communications.',
-      status: 'completed',
-      createdBy: 'agent-002',
-      assignedTo: 'agent-001',
+      id: "2",
+      title: "Decode Encrypted Message",
+      description:
+        "Use cipher key Alpha-7 to decrypt the intercepted communications.",
+      createdBy: "agent-002",
+      assignedTo: "agent-001",
       createdAt: new Date(Date.now() - 86400000).toISOString(),
-      completedAt: new Date().toISOString(),
     },
     {
-      id: '3',
-      title: 'Surveil Target Location',
-      description: 'Monitor the warehouse for 72 hours and report all movements.',
-      status: 'pending',
-      createdBy: 'agent-003',
-      assignedTo: 'agent-003',
+      id: "3",
+      title: "Surveil Target Location",
+      description:
+        "Monitor the warehouse for 72 hours and report all movements.",
+      createdBy: "agent-003",
+      assignedTo: "agent-003",
       createdAt: new Date(Date.now() - 172800000).toISOString(),
-    },
-    {
-      id: '4',
-      title: 'Extract Asset from Hostile Territory',
-      description: 'Retrieve the package from coordinates 47.6062° N, 122.3321° W.',
-      status: 'completed',
-      createdBy: 'agent-004',
-      assignedTo: 'agent-002',
-      createdAt: new Date(Date.now() - 259200000).toISOString(),
-      completedAt: new Date(Date.now() - 86400000).toISOString(),
     },
   ];
 
   const agents = [
-    { id: 'agent-001', name: 'Agent Shadow' },
-    { id: 'agent-002', name: 'Agent Phantom' },
-    { id: 'agent-003', name: 'Agent Viper' },
-    { id: 'agent-004', name: 'Agent Raven' },
+    { id: "agent-001", name: "Agent Shadow" },
+    { id: "agent-002", name: "Agent Phantom" },
+    { id: "agent-003", name: "Agent Viper" },
+    { id: "agent-004", name: "Agent Raven" },
   ];
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterAgent, setFilterAgent] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterAgent, setFilterAgent] = useState("all");
 
   const getAgentName = (agentId: string) => {
-    return agents.find(a => a.id === agentId)?.name || agentId;
+    return agents.find((a) => a.id === agentId)?.name || agentId;
   };
 
-  const filteredMissions = allMissions.filter(mission => {
-    const matchesSearch = mission.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         mission.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesAgent = filterAgent === 'all' || mission.createdBy === filterAgent || mission.assignedTo === filterAgent;
-    const matchesStatus = filterStatus === 'all' || mission.status === filterStatus;
+  const filteredMissions = allMissions.filter((mission) => {
+    const matchesSearch =
+      mission.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      mission.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesAgent =
+      filterAgent === "all" ||
+      mission.createdBy === filterAgent ||
+      mission.assignedTo === filterAgent;
 
-    return matchesSearch && matchesAgent && matchesStatus;
+    return matchesSearch && matchesAgent;
   });
 
   const stats = {
     total: allMissions.length,
-    pending: allMissions.filter(m => m.status === 'pending').length,
-    completed: allMissions.filter(m => m.status === 'completed').length,
     agents: agents.length,
   };
 
@@ -96,7 +85,9 @@ export default function AdminPanel({ user, onBack }: AdminPanelProps) {
                 <Shield className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">Admin Control Panel</h1>
+                <h1 className="text-xl font-bold text-white">
+                  Admin Control Panel
+                </h1>
                 <p className="text-xs text-slate-400">All Agency Operations</p>
               </div>
             </div>
@@ -104,7 +95,9 @@ export default function AdminPanel({ user, onBack }: AdminPanelProps) {
             <div className="flex items-center space-x-3 bg-slate-900/50 rounded-lg px-4 py-2 border border-slate-700/50">
               <Shield className="w-5 h-5 text-red-500" />
               <div>
-                <p className="text-sm font-semibold text-white">{user.username}</p>
+                <p className="text-sm font-semibold text-white">
+                  {user.username}
+                </p>
                 <p className="text-xs text-slate-400">Administrator</p>
               </div>
             </div>
@@ -113,12 +106,16 @@ export default function AdminPanel({ user, onBack }: AdminPanelProps) {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
           <div className="bg-slate-800/50 backdrop-blur-lg rounded-xl border border-slate-700/50 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-slate-400 text-sm font-medium">Total Missions</p>
-                <p className="text-3xl font-bold text-white mt-2">{stats.total}</p>
+                <p className="text-slate-400 text-sm font-medium">
+                  Total Missions
+                </p>
+                <p className="text-3xl font-bold text-white mt-2">
+                  {stats.total}
+                </p>
               </div>
               <div className="bg-gradient-to-br from-red-600 to-orange-600 rounded-lg p-3">
                 <Shield className="w-6 h-6 text-white" />
@@ -129,32 +126,12 @@ export default function AdminPanel({ user, onBack }: AdminPanelProps) {
           <div className="bg-slate-800/50 backdrop-blur-lg rounded-xl border border-slate-700/50 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-slate-400 text-sm font-medium">Pending</p>
-                <p className="text-3xl font-bold text-orange-400 mt-2">{stats.pending}</p>
-              </div>
-              <div className="bg-orange-600/20 rounded-lg p-3">
-                <Circle className="w-6 h-6 text-orange-400" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-slate-800/50 backdrop-blur-lg rounded-xl border border-slate-700/50 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-400 text-sm font-medium">Completed</p>
-                <p className="text-3xl font-bold text-green-400 mt-2">{stats.completed}</p>
-              </div>
-              <div className="bg-green-600/20 rounded-lg p-3">
-                <CheckCircle2 className="w-6 h-6 text-green-400" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-slate-800/50 backdrop-blur-lg rounded-xl border border-slate-700/50 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-400 text-sm font-medium">Active Agents</p>
-                <p className="text-3xl font-bold text-white mt-2">{stats.agents}</p>
+                <p className="text-slate-400 text-sm font-medium">
+                  Active Agents
+                </p>
+                <p className="text-3xl font-bold text-white mt-2">
+                  {stats.agents}
+                </p>
               </div>
               <div className="bg-slate-700 rounded-lg p-3">
                 <User className="w-6 h-6 text-white" />
@@ -167,7 +144,7 @@ export default function AdminPanel({ user, onBack }: AdminPanelProps) {
           <div className="p-6 border-b border-slate-700/50">
             <h2 className="text-xl font-bold text-white mb-4">All Missions</h2>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-500" />
                 <input
@@ -187,22 +164,11 @@ export default function AdminPanel({ user, onBack }: AdminPanelProps) {
                   className="w-full bg-slate-900/50 border border-slate-700 rounded-lg pl-11 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent transition appearance-none"
                 >
                   <option value="all">All Agents</option>
-                  {agents.map(agent => (
-                    <option key={agent.id} value={agent.id}>{agent.name}</option>
+                  {agents.map((agent) => (
+                    <option key={agent.id} value={agent.id}>
+                      {agent.name}
+                    </option>
                   ))}
-                </select>
-              </div>
-
-              <div className="relative">
-                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-500" />
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-slate-700 rounded-lg pl-11 pr-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent transition appearance-none"
-                >
-                  <option value="all">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="completed">Completed</option>
                 </select>
               </div>
             </div>
@@ -221,9 +187,6 @@ export default function AdminPanel({ user, onBack }: AdminPanelProps) {
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider hidden lg:table-cell">
                     Assigned To
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Status
-                  </th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider hidden sm:table-cell">
                     Date
                   </th>
@@ -232,17 +195,27 @@ export default function AdminPanel({ user, onBack }: AdminPanelProps) {
               <tbody className="divide-y divide-slate-700/50">
                 {filteredMissions.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                    <td
+                      colSpan={5}
+                      className="px-6 py-12 text-center text-slate-400"
+                    >
                       No missions found matching your filters
                     </td>
                   </tr>
                 ) : (
                   filteredMissions.map((mission) => (
-                    <tr key={mission.id} className="hover:bg-slate-700/30 transition">
+                    <tr
+                      key={mission.id}
+                      className="hover:bg-slate-700/30 transition"
+                    >
                       <td className="px-6 py-4">
                         <div>
-                          <p className="text-white font-medium">{mission.title}</p>
-                          <p className="text-slate-400 text-sm mt-1 line-clamp-1">{mission.description}</p>
+                          <p className="text-white font-medium">
+                            {mission.title}
+                          </p>
+                          <p className="text-slate-400 text-sm mt-1 line-clamp-1">
+                            {mission.description}
+                          </p>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-slate-300 text-sm hidden lg:table-cell">
@@ -250,15 +223,6 @@ export default function AdminPanel({ user, onBack }: AdminPanelProps) {
                       </td>
                       <td className="px-6 py-4 text-slate-300 text-sm hidden lg:table-cell">
                         {getAgentName(mission.assignedTo)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          mission.status === 'completed'
-                            ? 'bg-green-600/20 text-green-400 border border-green-600/30'
-                            : 'bg-orange-600/20 text-orange-400 border border-orange-600/30'
-                        }`}>
-                          {mission.status === 'completed' ? 'Completed' : 'Pending'}
-                        </span>
                       </td>
                       <td className="px-6 py-4 text-slate-400 text-sm hidden sm:table-cell">
                         {new Date(mission.createdAt).toLocaleDateString()}

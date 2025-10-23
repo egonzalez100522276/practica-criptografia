@@ -9,11 +9,14 @@ export interface Mission {
   id: string;
   title: string;
   description: string;
-  status: "pending" | "completed";
   createdBy: string;
   assignedTo: string;
   createdAt: string;
-  completedAt?: string;
+}
+
+export interface MissionForm {
+  title: string;
+  description: string;
 }
 
 export type ViewType = "login" | "register" | "dashboard" | "admin";
