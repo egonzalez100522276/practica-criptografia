@@ -76,7 +76,7 @@ export default function Dashboard({
                 id: m.id.toString(),
                 title: m.content.title,
                 description: m.content.description,
-                createdBy: m.creator_id.toString(),
+                createdBy: m.creator_username || m.creator_id.toString(),
                 assignedTo: user.id.toString(), // The current user is the assignee
                 createdAt: new Date().toISOString(), // Backend doesn't provide this yet
               })
@@ -296,12 +296,21 @@ export default function Dashboard({
                             </p>
 
                             <div className="flex flex-wrap items-center gap-3 text-xs">
-                              <span className="text-slate-500">
-                                Created{" "}
-                                {new Date(
-                                  mission.createdAt
-                                ).toLocaleDateString()}
-                              </span>
+                              {activeTab === "received" ? (
+                                <span className="text-slate-500">
+                                  From:{" "}
+                                  <span className="font-semibold text-slate-400">
+                                    {mission.createdBy}
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-500">
+                                  Created{" "}
+                                  {new Date(
+                                    mission.createdAt
+                                  ).toLocaleDateString()}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>

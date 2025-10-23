@@ -117,8 +117,15 @@ def decrypt_mission(cursor, mission_id: int, user_id: int, user_private_key) -> 
     decrypted_content_bytes = aesgcm.decrypt(iv, encrypted_content, None)
     decrypted_content_json = decrypted_content_bytes.decode('utf-8')
     
+    # NEW: Get creator's username to include in the response
+    creator = user_service.get_user_by_id(cursor, mission['creator_id'])
+    creator_username = creator['username'] if creator else 'Unknown Agent'
+
     # 6. Return the full mission object with the decrypted content
-    return {"id": mission['id'], "creator_id": mission['creator_id'], "content": json.loads(decrypted_content_json)}
+    return {
+        "id": mission['id'], "creator_id": mission['creator_id'], 
+        "creator_username": creator_username, "content": json.loads(decrypted_content_json)
+    }
 
 def decrypt_missions(cursor, missions: list, user_id: int, user_private_key) -> list:
     """
