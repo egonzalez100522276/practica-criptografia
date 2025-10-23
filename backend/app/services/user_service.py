@@ -49,7 +49,7 @@ def save_user_public_key(user_id: int, public_key: str):
         conn.close()
 
 
-def save_user_private_key(user_id: int, encrypted_private_key: bytes, salt: bytes, nonce: bytes):
+def save_user_private_key(user_id: int, encrypted_private_key: bytes):
     """ 
     Insert private key into DB
     """
@@ -57,9 +57,9 @@ def save_user_private_key(user_id: int, encrypted_private_key: bytes, salt: byte
     cursor = conn.cursor()
     try:
         cursor.execute("""
-            INSERT INTO user_private_keys (user_id, private_key_encrypted, salt, nonce)
-            VALUES (?, ?, ?, ?)
-        """, (user_id, encrypted_private_key, salt, nonce))
+            INSERT INTO user_private_keys (user_id, private_key_encrypted)
+            VALUES (?, ?)
+        """, (user_id, encrypted_private_key))
         conn.commit()
     finally:
         conn.close()

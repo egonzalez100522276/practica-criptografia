@@ -83,46 +83,68 @@ def generate_rsa_key_pair():
     return private_key, public_key
 
 def serialize_keys_in_pem(private_key, public_key):
-    """Serialize a pair of keys in PEM format."""
+    """DEPRECATED: Use generate_user_keys instead for password-based encryption."""
 
-    # Public key
     public_pem = public_key.public_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     ).decode("utf-8")
 
-    # Private key (no encryption here, caller must encrypt manually)
     private_pem = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.NoEncryption()
     ).decode("utf-8")
-
     return private_pem, public_pem
 
 
-def generate_user_keys(password: str):
+def generate_user_keys(password: str) -> tuple[str, str]:
     """
-    Generate RSA key pair and encrypt the private key with a key derived from the user's password.
-    Returns (public_pem, encrypted_private_key, salt, nonce)
+    Generate an RSA key pair. The private key is encrypted in PEM format using the user's password.
+    Returns (public_pem, encrypted_private_pem)
     """
-
     # 1. Generate RSA key pair
     private_key, public_key = generate_rsa_key_pair()
 
-    # 2. Serialize keys in PEM format
-    private_pem, public_pem = serialize_keys_in_pem(private_key, public_key)
+    # 2. Serialize public key to PEM (no encryption)
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode("utf-8")
 
-    # 4. Derive AES key from password using scrypt
-    salt = os.urandom(16)
-    kdf = Scrypt(salt=salt, length=32, n=2**14, r=8, p=1)
-    aes_key = kdf.derive(password.encode())
+    # 3. Serialize private key to PEM, encrypting it with the user's password
+    encrypted_private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.BestAvailableEncryption(password.encode('utf-8'))
+    ).decode("utf-8")
+
+    return public_pem, encrypted_private_pem
 
 
-    # 5. Encrypt private key with AES-GCM
+def decrypt_private_key(encrypted_private_key, salt, nonce, password):
+    """
+    Decrypts a user's private key using the password they used to log in.
+    Returns the private key object.
+    """
+    try:
+        # Load the PEM data into a private key object, providing the password for decryption.
+        private_key = serialization.load_pem_private_key(
+            encrypted_private_key.encode('utf-8'),
+            password=password.encode('utf-8')
+        )
+        return private_key
+    except Exception:
+        # This could fail if the password is wrong, or data is corrupt
+        return None
+
+def encrypt_with_aes(content: str) -> tuple[str, str, str]:
+    # Generate AES key
+    aes_key = os.urandom(32)
     aesgcm = AESGCM(aes_key)
     nonce = os.urandom(12)
-    encrypted_private_key = aesgcm.encrypt(nonce, private_pem.encode("utf-8"), None)
+    
+    # Encrypt content
+    encrypted_content = aesgcm.encrypt(nonce, content.encode("utf-8"), None)
 
-    # 6. Return all
-    return public_pem, encrypted_private_key, salt, nonce
+    return encrypted_content.hex(), nonce.hex(), aes_key.hex()

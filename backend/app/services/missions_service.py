@@ -25,6 +25,10 @@ def create_mission(title:str, description: str, creator: str) -> None:
     cursor.execute("SELECT id FROM users WHERE username = ?", (creator))
     creator_id = cursor.fetchone()[0]
 
+    # Generate AES key to encrypt the content
+
+    
+
 
     # Add mission to the DB
     cursor.execute("INSERT INTO missions (content_encrypted, iv, creator_id) VALUES (?, ?)", (title, description, creator_id))

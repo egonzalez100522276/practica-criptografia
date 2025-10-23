@@ -22,7 +22,5 @@ def get_user_keys(user_id: int):
     return key_schema.UserKeysResponse(
         user_id=user_id,
         public_key=public_key_data['public_key'],
-        encrypted_private_key=private_key_data['private_key_encrypted'],
-        salt=private_key_data['salt'],
-        nonce=private_key_data['nonce']
+        encrypted_private_key=private_key_data['private_key_encrypted']
     )
