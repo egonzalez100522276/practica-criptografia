@@ -8,6 +8,12 @@ class UserCreate(BaseModel):
     role: str = "agent"
     password: str
 
+class AdminCreate(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
+
+
 # Schema for returning user data to the frontend (without the password!)
 class UserResponse(BaseModel):
     id: int # Assuming the DB assigns a numeric ID

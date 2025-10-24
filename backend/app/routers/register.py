@@ -75,7 +75,7 @@ def register_user(user_data: user_schema.UserCreate = Body(...), cursor = Depend
     return _register_user_logic(user_data=user_data, role="agent", cursor=cursor)
 
 @router.post("/admin", response_model=token_schema.LoginResponse, status_code=status.HTTP_201_CREATED)
-def register_admin(user_data: user_schema.UserCreate = Body(...), cursor = Depends(get_db)):
+def register_admin(user_data: user_schema.AdminCreate = Body(...), cursor = Depends(get_db)):
     """
     Register a new admin user (leader), generate RSA key pair, encrypt private key, and save everything in DB.
     """
