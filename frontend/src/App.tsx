@@ -67,30 +67,44 @@ function App() {
             );
             setToken(storedToken);
             setCurrentUser(user);
+
             if (encryptedKey) {
-              const password = prompt(
-                "Please enter your password to decrypt your session key:"
-              );
-              if (password) {
+              // Try to get password from sessionStorage first for seamless refresh
+              let sessionPassword = sessionStorage.getItem("session_password");
+
+              // If not found, prompt the user as a fallback
+              if (!sessionPassword) {
+                sessionPassword = prompt(
+                  "Please enter your password to re-authenticate your session:"
+                );
+              }
+
+              if (sessionPassword) {
                 try {
                   const pki = forge.pki;
                   const privateKey = pki.decryptRsaPrivateKey(
                     encryptedKey,
-                    password
+                    sessionPassword
                   );
                   const privateKeyPem = pki.privateKeyToPem(privateKey);
                   setDecryptedPrivateKey(privateKeyPem);
+                  // If decryption was successful, ensure the password is in sessionStorage for the next refresh
+                  sessionStorage.setItem("session_password", sessionPassword);
                   console.log(
                     "DEBUG: Private key decrypted and loaded into memory."
                   );
                 } catch (e) {
                   showNotification(
                     "error",
-                    "Failed to decrypt private key. Incorrect password."
+                    "Failed to decrypt session. Incorrect password."
                   );
                   handleLogout(); // Log out if password is wrong
                   return;
                 }
+              } else {
+                // User cancelled the prompt
+                handleLogout();
+                return;
               }
             }
             setCurrentView("dashboard");
@@ -111,6 +125,7 @@ function App() {
         console.log("DEBUG: No token found. User is not logged in.");
         // Clean up any lingering keys if token is missing
         localStorage.removeItem("encrypted_private_key");
+        sessionStorage.removeItem("session_password");
       }
       setIsLoading(false);
     };
@@ -162,6 +177,9 @@ function App() {
           const privateKeyPem = pki.privateKeyToPem(privateKey);
           setDecryptedPrivateKey(privateKeyPem);
           console.log("DEBUG: Private key decrypted and stored in memory.");
+          // --- NEW: Store password in sessionStorage for seamless refresh ---
+          sessionStorage.setItem("session_password", password);
+          console.log("DEBUG: Session password stored in sessionStorage.");
         } catch (e) {
           console.error("Failed to decrypt private key on client:", e);
           showNotification("error", "Incorrect password or corrupted key.");
@@ -227,6 +245,11 @@ function App() {
           console.log(
             "DEBUG: Private key decrypted and stored in memory after registration."
           );
+          // --- NEW: Store password in sessionStorage for seamless refresh ---
+          sessionStorage.setItem("session_password", password);
+          console.log(
+            "DEBUG: Session password stored in sessionStorage after registration."
+          );
         } catch (e) {
           console.error(
             "Failed to decrypt private key on client after registration:",
@@ -267,6 +290,7 @@ function App() {
     console.log("DEBUG: Logging out. Removing JWT from localStorage.");
     localStorage.removeItem("jwt_token"); // Delete from localStorage
     localStorage.removeItem("encrypted_private_key"); // Delete encrypted key on logout
+    sessionStorage.removeItem("session_password"); // Delete session password
     setCurrentView("login");
     showNotification("success", "Logged out successfully.");
   };
