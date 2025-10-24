@@ -111,14 +111,3 @@ def delete_user(cursor, user_id: int) -> bool:
         return False
     cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
     return True
-
-
-def get_admins(cursor):
-    """
-    Retrieves all admins from the database.
-    """
-    cursor.execute("SELECT * FROM users WHERE role = 'leader'")
-    rows = cursor.fetchall()
-    return [dict(row) for row in rows]
-
-

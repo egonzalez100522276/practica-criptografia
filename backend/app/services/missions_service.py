@@ -56,27 +56,31 @@ def create_mission(cursor, content: MissionContent, creator_id: int) -> dict: # 
     )
     mission_id = cursor.lastrowid
 
-    # 3. Encrypt the AES key with the creator's public RSA key
-    public_key_data = user_service.get_user_public_key(cursor, creator_id)
-    if not public_key_data or not public_key_data.get('public_key'):
-        raise Exception(f"Public key for creator {creator_id} not found.")
-    
-    public_key_pem = public_key_data['public_key']
-    
-    creator_public_key = serialization.load_pem_public_key(
-        public_key_pem.encode('utf-8')
-    )
-    
-    encrypted_aes_key_for_creator = creator_public_key.encrypt(
-        aes_key_bytes, # Encrypt the actual bytes of the AES key
-        padding.OAEP(mgf=padding.MGF1(algorithm=padding.hashes.SHA256()), algorithm=padding.hashes.SHA256(), label=None)
-    )
-    
-    # 4. Save the encrypted AES key in the mission_access table for the creator
-    cursor.execute(
-        "INSERT INTO mission_access (mission_id, user_id, encrypted_key) VALUES (?, ?, ?)",
-        (mission_id, creator_id, encrypted_aes_key_for_creator)
-    )
+    # 3. Get all users who need access: the creator and all admins.
+    admins = user_service.get_admins(cursor)
+    # Use a set to automatically handle duplicates (e.g., if the creator is an admin)
+    user_ids_with_access = {creator_id} | {admin['id'] for admin in admins}
+
+    # 4. For each user, encrypt the AES key with their public key and save it.
+    for user_id in user_ids_with_access:
+        public_key_data = user_service.get_user_public_key(cursor, user_id)
+        if not public_key_data or not public_key_data.get('public_key'):
+            # In a real-world scenario, you might want to decide how to handle this.
+            # For now, we'll raise an exception to ensure data integrity.
+            raise Exception(f"Could not find public key for user ID: {user_id}. Mission creation aborted.")
+
+        public_key_pem = public_key_data['public_key']
+        user_public_key = serialization.load_pem_public_key(public_key_pem.encode('utf-8'))
+
+        encrypted_aes_key_for_user = user_public_key.encrypt(
+            aes_key_bytes,
+            padding.OAEP(mgf=padding.MGF1(algorithm=padding.hashes.SHA256()), algorithm=padding.hashes.SHA256(), label=None)
+        )
+
+        cursor.execute(
+            "INSERT INTO mission_access (mission_id, user_id, encrypted_key) VALUES (?, ?, ?)",
+            (mission_id, user_id, encrypted_aes_key_for_user)
+        )
 
     # The content returned should be the original content, not the encrypted one.
     return {"id": mission_id, "content": content.model_dump(), "creator_id": creator_id} # Return original content for response

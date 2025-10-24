@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Body
 from ..schemas import missions as mission_schema
 from ..schemas import user as user_schema
-from ..services import missions_service
+from ..services import user_service, missions_service
 from ..core.dependencies import get_current_user
 from ..db.database import get_db
 from cryptography.hazmat.primitives import serialization
@@ -24,34 +24,10 @@ def create_mission(
 ):
     """
     Creates a new mission. Requires authentication.
-    The mission content is encrypted and access is granted to the creator and assigned users.
+    The mission content is encrypted and access is granted to the creator and the admins.
     """
     created_mission = missions_service.create_mission(cursor, content=mission_data.content, creator_id=current_user['id'])
     return created_mission
-
-# @router.post("/{mission_id}/decrypt", response_model=mission_schema.MissionResponse)
-# def decrypt_mission_endpoint(
-#     mission_id: int,
-#     body: mission_schema.MissionDecryptWithKeyRequest,
-#     current_user: user_schema.UserResponse = Depends(get_current_user),
-#     cursor = Depends(get_db)
-# ):
-#     """
-#     Decrypts a single mission using the user's private key provided in the request body.
-#     """
-#     try:
-#         user_private_key = serialization.load_pem_private_key(body.private_key_pem.encode(), password=None)
-#     except Exception:
-#         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid private key format.")
-
-#     decrypted_mission = missions_service.decrypt_mission(
-#         cursor, mission_id=mission_id, user_id=current_user['id'], user_private_key=user_private_key
-#     )
-
-#     if not decrypted_mission:
-#         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Could not decrypt mission. Check if you have access or if the key is correct.")
-
-#     return decrypted_mission
 
 @router.post("/mine/decrypt", response_model=list[mission_schema.MissionResponse])
 def get_and_decrypt_my_created_missions(
@@ -63,13 +39,16 @@ def get_and_decrypt_my_created_missions(
     Retrieves and decrypts all missions created by the currently authenticated user.
     Requires the user's private key in PEM format in the request body.
     """
+    # Decrypt the user's private key from the request body
     try:
         user_private_key = serialization.load_pem_private_key(body.private_key_pem.encode(), password=None)
     except Exception:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid private key format.")
 
+    # Get missions created by the user
     missions = missions_service.get_missions_by_creator(cursor, creator_id=current_user['id'])
     return missions_service.decrypt_missions(cursor, missions, current_user['id'], user_private_key)
+
 
 @router.post("/{mission_id}/share", status_code=status.HTTP_200_OK)
 def share_mission_endpoint(
