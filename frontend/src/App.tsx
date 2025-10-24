@@ -4,6 +4,7 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import Dashboard from "./components/Dashboard";
 import AdminPanel from "./components/AdminPanel";
+import * as forge from "node-forge";
 
 /**
  * Decodes a JWT token to extract its payload without verifying the signature.
@@ -34,6 +35,9 @@ function App() {
   } | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true); // Nuevo estado para manejar la carga inicial
+  const [decryptedPrivateKey, setDecryptedPrivateKey] = useState<string | null>(
+    null
+  );
 
   // Efecto para cargar el token y el usuario desde localStorage al iniciar la app
   useEffect(() => {
@@ -43,6 +47,7 @@ function App() {
     const checkSession = async () => {
       console.log("DEBUG: Checking for active session on page load...");
       const storedToken = localStorage.getItem("jwt_token");
+      const encryptedKey = localStorage.getItem("encrypted_private_key");
 
       if (storedToken) {
         try {
@@ -62,19 +67,50 @@ function App() {
             );
             setToken(storedToken);
             setCurrentUser(user);
+            if (encryptedKey) {
+              const password = prompt(
+                "Please enter your password to decrypt your session key:"
+              );
+              if (password) {
+                try {
+                  const pki = forge.pki;
+                  const privateKey = pki.decryptRsaPrivateKey(
+                    encryptedKey,
+                    password
+                  );
+                  const privateKeyPem = pki.privateKeyToPem(privateKey);
+                  setDecryptedPrivateKey(privateKeyPem);
+                  console.log(
+                    "DEBUG: Private key decrypted and loaded into memory."
+                  );
+                } catch (e) {
+                  showNotification(
+                    "error",
+                    "Failed to decrypt private key. Incorrect password."
+                  );
+                  handleLogout(); // Log out if password is wrong
+                  return;
+                }
+              }
+            }
             setCurrentView("dashboard");
           } else {
             console.warn("DEBUG: Session validation failed. Removing token.");
-            localStorage.removeItem("jwt_token");
+          }
+          // If the session is invalid, we must also clear the in-memory private key
+          if (!response.ok) {
+            handleLogout();
           }
         } catch (error: any) {
           if (error.name !== "AbortError") {
             console.error("DEBUG: Error validating session:", error);
-            localStorage.removeItem("jwt_token");
+            handleLogout();
           }
         }
       } else {
         console.log("DEBUG: No token found. User is not logged in.");
+        // Clean up any lingering keys if token is missing
+        localStorage.removeItem("encrypted_private_key");
       }
       setIsLoading(false);
     };
@@ -99,7 +135,7 @@ function App() {
       loginFormData.append("username", username);
       loginFormData.append("password", password);
 
-      const response = await fetch("http://127.0.0.1:8000/auth/login  ", {
+      const response = await fetch("http://127.0.0.1:8000/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -108,38 +144,28 @@ function App() {
       });
 
       if (response.ok) {
-        const { access_token } = await response.json();
+        const { access_token, encrypted_private_key } = await response.json();
         setToken(access_token);
         console.log("DEBUG: Login successful. Storing JWT in localStorage.");
         localStorage.setItem("jwt_token", access_token); // Guardar en localStorage
+        localStorage.setItem("encrypted_private_key", encrypted_private_key);
 
         const payload = parseJwt(access_token);
 
-        // --- NEW: Decrypt and store private key ---
+        // --- SECURE: Decrypt private key on client and store in memory ---
         try {
-          const keyResponse = await fetch(
-            "http://127.0.0.1:8000/keys/decrypt",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ username, password }),
-            }
+          const pki = forge.pki;
+          const privateKey = pki.decryptRsaPrivateKey(
+            encrypted_private_key,
+            password
           );
-          if (keyResponse.ok) {
-            const { private_key_pem } = await keyResponse.json();
-            localStorage.setItem("private_key_pem", private_key_pem);
-            console.log(
-              "DEBUG: Private key decrypted and stored in localStorage."
-            );
-          } else {
-            showNotification(
-              "error",
-              "Could not retrieve private key. Login failed."
-            );
-            return;
-          }
-        } catch (keyError) {
-          showNotification("error", "Failed to contact key service.");
+          const privateKeyPem = pki.privateKeyToPem(privateKey);
+          setDecryptedPrivateKey(privateKeyPem);
+          console.log("DEBUG: Private key decrypted and stored in memory.");
+        } catch (e) {
+          console.error("Failed to decrypt private key on client:", e);
+          showNotification("error", "Incorrect password or corrupted key.");
+          handleLogout(); // Clean up if decryption fails
           return;
         }
 
@@ -179,37 +205,38 @@ function App() {
       });
 
       if (response.ok) {
-        const { access_token } = await response.json();
+        // The registration endpoint should also return the encrypted key
+        const { access_token, encrypted_private_key } = await response.json();
         setToken(access_token);
         console.log(
           "DEBUG: Registration successful. Storing JWT in localStorage."
         );
         localStorage.setItem("jwt_token", access_token); // Guardar en localStorage
+        localStorage.setItem("encrypted_private_key", encrypted_private_key);
         showNotification("success", "Registration successful! Logging in...");
 
-        // --- FIX: Decrypt and store private key after registration ---
+        // --- SECURE: Decrypt private key on client and store in memory ---
         try {
-          const keyResponse = await fetch(
-            "http://127.0.0.1:8000/keys/decrypt",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ username, password }),
-            }
+          const pki = forge.pki;
+          const privateKey = pki.decryptRsaPrivateKey(
+            encrypted_private_key,
+            password
           );
-          if (keyResponse.ok) {
-            const { private_key_pem } = await keyResponse.json();
-            localStorage.setItem("private_key_pem", private_key_pem);
-            console.log(
-              "DEBUG: Private key decrypted and stored after registration."
-            );
-          } else {
-            throw new Error(
-              "Could not retrieve private key after registration."
-            );
-          }
-        } catch (keyError) {
-          throw new Error("Failed to contact key service after registration.");
+          const privateKeyPem = pki.privateKeyToPem(privateKey);
+          setDecryptedPrivateKey(privateKeyPem);
+          console.log(
+            "DEBUG: Private key decrypted and stored in memory after registration."
+          );
+        } catch (e) {
+          console.error(
+            "Failed to decrypt private key on client after registration:",
+            e
+          );
+          handleLogout();
+          // Re-throw to show error notification
+          throw new Error(
+            "Could not decrypt private key. Registration failed post-creation."
+          );
         }
 
         const payload = parseJwt(access_token);
@@ -236,9 +263,10 @@ function App() {
   const handleLogout = () => {
     setCurrentUser(null);
     setToken(null);
+    setDecryptedPrivateKey(null); // Clear the in-memory private key
     console.log("DEBUG: Logging out. Removing JWT from localStorage.");
     localStorage.removeItem("jwt_token"); // Delete from localStorage
-    localStorage.removeItem("private_key_pem"); // Delete private key on logout
+    localStorage.removeItem("encrypted_private_key"); // Delete encrypted key on logout
     setCurrentView("login");
     showNotification("success", "Logged out successfully.");
   };
@@ -269,6 +297,7 @@ function App() {
             onLogout={handleLogout}
             onSwitchToAdmin={() => undefined}
             token={token}
+            privateKeyPem={decryptedPrivateKey}
             showNotification={showNotification}
           />
         ) : null;

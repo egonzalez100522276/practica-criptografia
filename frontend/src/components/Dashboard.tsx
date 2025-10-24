@@ -20,6 +20,7 @@ interface DashboardProps {
   token: string | null;
   onSwitchToAdmin: () => void;
   showNotification: (type: "success" | "error", message: string) => void;
+  privateKeyPem: string | null;
 }
 
 export default function Dashboard({
@@ -28,6 +29,7 @@ export default function Dashboard({
   onSwitchToAdmin,
   token,
   showNotification,
+  privateKeyPem,
 }: DashboardProps) {
   const [myMissions, setMyMissions] = useState<Mission[]>([]);
   const [receivedMissions, setReceivedMissions] = useState<Mission[]>([]);
@@ -41,7 +43,6 @@ export default function Dashboard({
   useEffect(() => {
     const fetchAllMissions = async () => {
       const storedToken = localStorage.getItem("jwt_token");
-      const privateKeyPem = localStorage.getItem("private_key_pem");
 
       if (!storedToken || !privateKeyPem) {
         showNotification(
@@ -104,7 +105,7 @@ export default function Dashboard({
     };
 
     fetchAllMissions();
-  }, [token, showNotification, onLogout, user.id]); // Re-fetch if token changes
+  }, [token, privateKeyPem, showNotification, onLogout, user.id]); // Re-fetch if token or key changes
 
   const handleCreateMission = async (title: string, description: string) => {
     if (!token) {
@@ -345,6 +346,7 @@ export default function Dashboard({
           mission={myMissions.find((m) => m.id === selectedMissionId)!}
           currentUser={user}
           token={token}
+          privateKeyPem={privateKeyPem}
           showNotification={showNotification}
           onClose={() => {
             setShowShareModal(false);

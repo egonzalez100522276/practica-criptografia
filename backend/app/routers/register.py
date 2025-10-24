@@ -1,6 +1,6 @@
 # Modules
 from fastapi import APIRouter, HTTPException, status, Body, Depends
-from ..schemas import user as user_schema
+from ..schemas import user as user_schema, token as token_schema
 from ..services import user_service, session_service
 from ..db.database import get_db
 from ..core.security import generate_user_keys, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, decrypt_private_key
@@ -55,7 +55,11 @@ def _register_user_logic(user_data: user_schema.UserCreate, role: str, cursor = 
         # 7. Save the session to the database using the same transaction
         session_service.save_session(cursor, user_id=created_user.id, sub=created_user.username, role=created_user.role, jwt_token=access_token, expires_at=expire_time)
 
-        return {"access_token": access_token, "token_type": "bearer"}
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "encrypted_private_key": encrypted_private_pem
+        }
     except Exception as e:
         # The rollback is handled automatically by the `get_db` dependency on exception.
         raise HTTPException(
@@ -63,14 +67,14 @@ def _register_user_logic(user_data: user_schema.UserCreate, role: str, cursor = 
             detail=f"An internal error occurred while creating the user: {e}"
         )
 
-@router.post("/", response_model=user_schema.Token, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=token_schema.LoginResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user_data: user_schema.UserCreate = Body(...), cursor = Depends(get_db)):
     """
     Register a new user (agent), generate RSA key pair, encrypt private key, and save everything in DB.
     """
     return _register_user_logic(user_data=user_data, role="agent", cursor=cursor)
 
-@router.post("/admin", response_model=user_schema.Token, status_code=status.HTTP_201_CREATED)
+@router.post("/admin", response_model=token_schema.LoginResponse, status_code=status.HTTP_201_CREATED)
 def register_admin(user_data: user_schema.UserCreate = Body(...), cursor = Depends(get_db)):
     """
     Register a new admin user (leader), generate RSA key pair, encrypt private key, and save everything in DB.

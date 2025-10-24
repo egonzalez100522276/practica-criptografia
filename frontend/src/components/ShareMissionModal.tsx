@@ -8,6 +8,7 @@ interface ShareMissionModalProps {
   onShare: (selectedUserIds: string[]) => void;
   token: string | null;
   showNotification: (type: "success" | "error", message: string) => void;
+  privateKeyPem: string | null;
   currentUser: User;
 }
 
@@ -17,6 +18,7 @@ export default function ShareMissionModal({
   onShare,
   token,
   showNotification,
+  privateKeyPem,
   currentUser,
 }: ShareMissionModalProps) {
   const [users, setUsers] = useState<User[]>([]);
@@ -116,7 +118,6 @@ export default function ShareMissionModal({
           </button>
           <button
             onClick={async () => {
-              const privateKeyPem = localStorage.getItem("private_key_pem");
               if (!token || !privateKeyPem) {
                 showNotification(
                   "error",
