@@ -3,9 +3,9 @@ from .database import get_connection, DB_PATH
 
 def create_tables(conn=None) -> None:
     """
-    Crea todas las tablas de la base de datos.
-    Si no se pasa una conexión, se abre una nueva (modo producción).
-    Si se pasa una conexión, se reutiliza (ideal para tests con SQLite en memoria).
+    Creates all database tables.
+    If no connection is passed, a new one is opened (production mode).
+    If a connection is passed, it is reused (ideal for tests with in-memory SQLite).
     """
     close_after = False
     if conn is None:
@@ -88,8 +88,8 @@ def create_tables(conn=None) -> None:
 
 def seed_demo_user(conn=None) -> None:
     """
-    Inserta un usuario de demostración en la base de datos.
-    También admite una conexión externa (para tests o scripts).
+    Inserts a demo user into the database.
+    It also supports an external connection (for tests or scripts).
     """
     close_after = False
     if conn is None:

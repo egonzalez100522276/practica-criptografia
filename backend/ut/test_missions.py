@@ -4,7 +4,7 @@ from cryptography.hazmat.primitives import serialization
 from app.core.security import decrypt_private_key
 
 def test_create_mission_unauthenticated(client: TestClient):
-    """Prueba que un usuario no autenticado no puede crear una misión."""
+    """Tests that an unauthorized user cannot create a mission."""
     response = client.post(
         "/missions/",
         json={"content": {"title": "Test Mission", "description": "This should fail."}},
@@ -12,14 +12,14 @@ def test_create_mission_unauthenticated(client: TestClient):
     assert response.status_code == 401  # Unauthorized
 
 def test_create_and_decrypt_own_mission(client: TestClient, register_user):
-    """Prueba el flujo completo: crear una misión y luego descifrarla."""
-    # 1. Registrar y obtener token y clave
+    """Tries to create a mission and then decrypt it with the agent's private key."""
+    # 1. Register two users
     agent1_data = register_user("agent1", "password123")
     agent1_token = agent1_data["response"]["access_token"]
     agent1_enc_key = agent1_data["response"]["encrypted_private_key"]
     agent1_password = agent1_data["data"]["password"]
 
-    # 2. Crear una misión
+    # 2. Create a mission
     mission_content = {"title": "Solo Mission", "description": "My eyes only."}
     response_create = client.post(
         "/missions/",
@@ -30,18 +30,18 @@ def test_create_and_decrypt_own_mission(client: TestClient, register_user):
     created_mission = response_create.json()
     assert created_mission["content"]["title"] == mission_content["title"]
 
-    # 3. Descifrar la clave privada del agente
+    # 3. Decypher the agent's private key
     agent1_priv_key_obj = decrypt_private_key(agent1_enc_key, agent1_password)
     assert agent1_priv_key_obj is not None
 
-    # Convertir el objeto de clave privada a formato PEM (string) para poder enviarlo como JSON
+    # Serialize it to a PEM format
     agent1_priv_key_pem_str = agent1_priv_key_obj.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.NoEncryption()
     ).decode('utf-8')
 
-    # 4. Pedir al backend que descifre las misiones del agente
+    # 4. Ask backend to decypher agent's missions
     response_decrypt = client.post(
         "/missions/mine/decrypt",
         headers={"Authorization": f"Bearer {agent1_token}"},
@@ -55,19 +55,19 @@ def test_create_and_decrypt_own_mission(client: TestClient, register_user):
     assert decrypted_missions[0]["content"]["description"] == mission_content["description"]
 
 def test_share_and_receive_mission(client: TestClient, register_user):
-    """Prueba el flujo de compartir una misión de un agente a otro."""
-    # 1. Registrar dos agentes
+    """Tests the shering and receiving of a mission."""
+    # 1. Register two agents
     agent_creator_data = register_user("creator_agent", "pass_creator")
     agent_receiver_data = register_user("receiver_agent", "pass_receiver")
-    # solo se recibe el access_token
+    # only receive access_token
     creator_token = agent_creator_data["response"]["access_token"]
     creator_enc_key = agent_creator_data["response"]["encrypted_private_key"]
     creator_password = agent_creator_data["data"]["password"]
-    receiver_id = agent_receiver_data["response"]["user_id"] # Acceso correcto al ID del usuario
+    receiver_id = agent_receiver_data["response"]["user_id"]
     receiver_enc_key = agent_receiver_data["response"]["encrypted_private_key"] 
     receiver_password = agent_receiver_data["data"]["password"]
 
-    # 2. El agente creador crea una misión
+    # 2. Creator agents creates a mission
     mission_content = {"title": "Shared Task", "description": "For your eyes only."}
     response_create = client.post(
         "/missions/",
@@ -77,8 +77,8 @@ def test_share_and_receive_mission(client: TestClient, register_user):
     assert response_create.status_code == 201
     mission_id = response_create.json()["id"]
 
-    # 3. El agente creador comparte la misión con el agente receptor
-    # Primero, necesitamos la clave privada del creador en formato PEM.
+    # 3. Creator agent shares mission with receiver agent
+    # First we need the creator's PK in PEM format.
     creator_priv_key_obj = decrypt_private_key(creator_enc_key, creator_password)
     assert creator_priv_key_obj is not None
     creator_priv_key_pem_str = creator_priv_key_obj.private_bytes(
@@ -90,25 +90,24 @@ def test_share_and_receive_mission(client: TestClient, register_user):
     response_share = client.post(
         f"/missions/{mission_id}/share",
         headers={"Authorization": f"Bearer {creator_token}"},
-        # Usamos la clave PEM descifrada, no la cifrada.
         json={"user_ids": [receiver_id], "private_key_pem": creator_priv_key_pem_str},
     )
     assert response_share.status_code == 200
     assert "Mission shared successfully" in response_share.json()["message"]
 
-    # 4. El agente receptor intenta descifrar sus misiones compartidas
-    # Primero, el receptor necesita su propia clave privada PEM
+    # 4.Receiver agent tries to decypher his received missions
+    # Receiver needs his own PK PEM
     receiver_priv_key_obj = decrypt_private_key(receiver_enc_key, receiver_password)
     assert receiver_priv_key_obj is not None
 
-    # Convertir el objeto de clave a formato PEM (string)
+    # Serialize the key object to PEM (string)
     receiver_priv_key_pem_str = receiver_priv_key_obj.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.NoEncryption()
     ).decode('utf-8')
 
-    # Ahora, el receptor pide al backend que descifre las misiones compartidas con él
+    # Now, receiver asks backend to get the missions shared with him
     receiver_token = agent_receiver_data["response"]["access_token"]
     response_decrypt_shared = client.post(
         "/missions/shared/decrypt",

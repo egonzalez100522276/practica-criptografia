@@ -30,7 +30,7 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends(), cursor = Depend
     expire_time = datetime.now(timezone.utc) + access_token_expires
     
     access_token = create_access_token(
-        # El 'sub' (subject) es un campo estándar en JWT para identificar al usuario
+        # The 'sub' (subject) is a standard JWT field to identify the user
         data={"sub": user['username'], "user_id": user['id'], "role": user['role'], "exp": expire_time}
     )
 
