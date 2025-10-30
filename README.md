@@ -1,4 +1,4 @@
-# Spy Agency Web Project
+# Spy Agency Web Project 🔒
 
 This project is a web application for a fictional spy agency, featuring a React frontend and a Python (FastAPI) backend. It's designed to practice web development and cryptography concepts.
 
