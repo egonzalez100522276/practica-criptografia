@@ -52,6 +52,8 @@ uvicorn app.main:app --reload
 
     The API will now be running at `http://127.0.0.1:8000`.
 
+> Note: If that URL does not work, try `http://localhost:8000`.
+
 ---
 
 ### 2. Frontend Setup (React / Vite) ⚛️
