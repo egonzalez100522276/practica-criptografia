@@ -2,18 +2,18 @@
 
 This project is a web application for a fictional spy agency, featuring a React frontend and a Python (FastAPI) backend. It's designed to practice web development and cryptography concepts.
 
-## Quick Start Guide
+## Quick Start Guide 🚀
 
 This guide will help you get the project running on your local machine for development and testing purposes.
 
-### Prerequisites
+### Prerequisites 📋
 
 - [Node.js](https://nodejs.org/) (v18 or later recommended)
 - [Python](https://www.python.org/) (v3.10 or later recommended)
 
 ---
 
-### 1. Backend Setup (Python / FastAPI)
+### 1. Backend Setup (Python / FastAPI) 🐍
 
 First, let's get the API server running.
 
@@ -54,7 +54,7 @@ uvicorn app.main:app --reload
 
 ---
 
-### 2. Frontend Setup (React / Vite)
+### 2. Frontend Setup (React / Vite) ⚛️
 
 With the backend running, open a **new terminal** to set up the frontend.
 
