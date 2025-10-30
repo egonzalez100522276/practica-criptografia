@@ -138,6 +138,8 @@ def decrypt_private_key(encrypted_private_key, password):
         # This could fail if the password is wrong, or data is corrupt
         return None
 
+
+# --- AES ---
 def encrypt_with_aes(content: str) -> tuple[str, str, bytes]: # Changed return type hint
     # Generate AES key
     aes_key = os.urandom(32)

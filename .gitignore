@@ -10,7 +10,7 @@ node_modules
 dist
 dist-ssr
 *.local
-
+.vscode
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -29,6 +29,8 @@ __pycache__/
 .venv/
 .eggs/
 .mypy_cache/
+.pytest_cache/
+.coverage
 
 # Database
 *.db

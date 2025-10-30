@@ -50,7 +50,7 @@ def create_tables(conn=None) -> None:
             content_encrypted TEXT NOT NULL,
             iv TEXT NOT NULL,
             creator_id INTEGER,
-            FOREIGN KEY (creator_id) REFERENCES users (id)
+            FOREIGN KEY (creator_id) REFERENCES users (id) ON DELETE CASCADE
         );
     """)
 
@@ -76,7 +76,7 @@ def create_tables(conn=None) -> None:
             jwt_token TEXT NOT NULL,
             issued_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             expires_at DATETIME,
-            FOREIGN KEY (user_id) REFERENCES users (id)
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         );
     """)
 
