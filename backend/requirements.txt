@@ -1,7 +1,12 @@
+# API
 fastapi
 uvicorn[standard]
 pydantic
+# Cryptography
 passlib[bcrypt]
 cryptography
 python-jose[cryptography]
 python-multipart
+# Unit tests
+pytest
+httpx

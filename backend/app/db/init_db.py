@@ -1,9 +1,17 @@
 # backend/db/init_db.py
 from .database import get_connection, DB_PATH
 
-# Create every table in the DB
-def create_tables() -> None:
-    conn = get_connection()
+def create_tables(conn=None) -> None:
+    """
+    Crea todas las tablas de la base de datos.
+    Si no se pasa una conexión, se abre una nueva (modo producción).
+    Si se pasa una conexión, se reutiliza (ideal para tests con SQLite en memoria).
+    """
+    close_after = False
+    if conn is None:
+        conn = get_connection()
+        close_after = True
+
     cursor = conn.cursor()
 
     # Users table
@@ -19,43 +27,43 @@ def create_tables() -> None:
 
     # Table for user public keys
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS user_keys (
-        user_id INTEGER PRIMARY KEY,
-        public_key TEXT NOT NULL,   -- clave pública RSA (en formato PEM)
-        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-    );
-""")
-    
+        CREATE TABLE IF NOT EXISTS user_keys (
+            user_id INTEGER PRIMARY KEY,
+            public_key TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+    """)
+
     # Table for user private keys
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS user_private_keys (
-        user_id INTEGER PRIMARY KEY,
-        private_key_encrypted TEXT NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-);
-""")
+        CREATE TABLE IF NOT EXISTS user_private_keys (
+            user_id INTEGER PRIMARY KEY,
+            private_key_encrypted TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+    """)
 
     # Missions table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS missions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             content_encrypted TEXT NOT NULL,
-            iv TEXT NOT NULL, -- Initialization Vector (nonce) for AES-GCM
+            iv TEXT NOT NULL,
             creator_id INTEGER,
-            FOREIGN KEY (creator_id) REFERENCES users (id) 
+            FOREIGN KEY (creator_id) REFERENCES users (id)
         );
     """)
 
-    # Table that maps which user has acces to which missions
+    # Table that maps which user has access to which missions
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS mission_access (
-        mission_id INTEGER,
-        user_id INTEGER,
-        encrypted_key BLOB NOT NULL,   -- AES key, encrypted with the user's public RSA key
-        PRIMARY KEY (mission_id, user_id),
-        FOREIGN KEY (mission_id) REFERENCES missions (id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-                   )
+            mission_id INTEGER,
+            user_id INTEGER,
+            encrypted_key BLOB NOT NULL,
+            PRIMARY KEY (mission_id, user_id),
+            FOREIGN KEY (mission_id) REFERENCES missions (id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
     """)
 
     # JWT tokens table
@@ -69,32 +77,41 @@ def create_tables() -> None:
             issued_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             expires_at DATETIME,
             FOREIGN KEY (user_id) REFERENCES users (id)
-            );
+        );
     """)
 
     conn.commit()
-    conn.close()
 
-def seed_demo_user() -> None:
-    conn = get_connection()
+    if close_after:
+        conn.close()
+
+
+def seed_demo_user(conn=None) -> None:
+    """
+    Inserta un usuario de demostración en la base de datos.
+    También admite una conexión externa (para tests o scripts).
+    """
+    close_after = False
+    if conn is None:
+        conn = get_connection()
+        close_after = True
+
     cursor = conn.cursor()
-
     cursor.execute("""
         INSERT OR IGNORE INTO users (username, email, role, password_hash)
         VALUES ('admin', 'admin@example.com', 'admin', 'hashed_password');
     """)
-    
-
     conn.commit()
-    conn.close()
 
-# To run, type python -m app.db.init_db
+    if close_after:
+        conn.close()
+
+
 if __name__ == "__main__":
-    # Habilitar claves foráneas para la sesión actual
     conn = get_connection()
     conn.execute("PRAGMA foreign_keys = ON;")
+    create_tables(conn)
+    # seed_demo_user(conn)
     conn.close()
 
-    create_tables()
-    # seed_demo_user()
-    print(f"Database initialized with tables: users, user_keys, user_private_keys, missions, mission_access, sessions ({DB_PATH})")
+    print(f"✅ Database initialized with tables: users, user_keys, user_private_keys, missions, mission_access, sessions ({DB_PATH})")
