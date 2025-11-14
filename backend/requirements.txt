@@ -11,3 +11,4 @@ argon2-cffi
 # Unit tests
 pytest
 httpx
+coverage

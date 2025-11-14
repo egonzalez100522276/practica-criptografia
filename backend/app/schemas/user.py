@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 # Schema for receiving user registration data from the frontend
 class UserCreate(BaseModel):
@@ -21,8 +21,7 @@ class UserResponse(BaseModel):
     email: EmailStr
     role: str
 
-    class Config:
-        from_attributes = True # Allows creating the model from a DB object
+    model_config = ConfigDict(from_attributes=True) # Allows creating the model from a DB object
     
 class UserResponseWithPassword(UserResponse):
     password_hash: str

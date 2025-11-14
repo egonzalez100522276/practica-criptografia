@@ -151,6 +151,7 @@ def share_mission(cursor, mission_id: int, sharer_id: int, sharer_private_key, t
     2. Re-encrypts the AES key for each target user using their public key.
     3. Inserts the new access records into the database.
     """
+    
     # 1. Get the encrypted AES key for the user who is sharing the mission
     cursor.execute("SELECT encrypted_key FROM mission_access WHERE mission_id = ? AND user_id = ?", (mission_id, sharer_id))
     access_data = cursor.fetchone()

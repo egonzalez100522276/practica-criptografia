@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 from ..core.security import decode_access_token
 from .user_service import UserObj
-
+from datetime import datetime
 
 def get_sessions(cursor) -> list:
     """
@@ -14,8 +14,9 @@ def get_sessions(cursor) -> list:
     rows = cursor.fetchall()
     return rows
 
-def save_session(cursor, user_id: int, sub: str, role: str, jwt_token: str, expires_at: datetime):
+def save_session(cursor, user_id: int, sub: str, role: str, jwt_token: str, expires_at:datetime):
     """Saves a new session token to the database."""
+    
     cursor.execute(
         "INSERT INTO sessions (user_id, sub, role,  jwt_token, expires_at) VALUES (?, ?, ?, ?, ?)",
         (user_id, sub, role, jwt_token, expires_at)
