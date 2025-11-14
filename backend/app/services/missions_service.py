@@ -38,13 +38,22 @@ def get_shared_missions_for_user(cursor, user_id: int) -> list:
     missions = [dict(row) for row in rows]
     return missions
 
+
 def create_mission(cursor, content: MissionContent, creator_id: int) -> dict: # Changed content type
     """
     Creates a new mission, encrypts its content, and grants access to specified users.
     This is an atomic transaction managed by the `get_db` dependency.
     """
+
     # Convert the Pydantic model to a JSON string before encrypting
+    
     content_json_str = content.model_dump_json() # Use model_dump_json() for Pydantic v2
+    
+    # Part 2: Add signature to the content.
+    # data['signature'] = sign(data['title'] + data['description'], user_pk)
+    # La función sign hay que hacerla en security, habrá que usar algoritmos de firma de cryptography
+
+
 
     # 1. Encrypt the mission content with a new, single-use AES key
     encrypted_content_hex, nonce_hex, aes_key_bytes = encrypt_with_aes(content_json_str) # Get aes_key_bytes
