@@ -38,28 +38,33 @@ G = 2
 
 def mod_inverse(a, m):
     """
-    Computes the modular multiplicative inverse of a modulo m.
-    a * x = 1 (mod m)
+    Computes the modular multiplicative inverse of a modulo m using Extended Euclidean Algorithm.
+    Returns None if inverse doesn't exist (gcd(a,m) != 1).
     """
-    m0 = m
-    y = 0
-    x = 1
     if m == 1:
         return 0
+    
+    # Make sure a is positive and less than m
+    a = a % m
+    if a == 0:
+        return None
+    
+    # Extended Euclidean Algorithm
+    m0, x0, x1 = m, 0, 1
+    
     while a > 1:
-        # q is quotient
+        if m == 0:  # No inverse exists
+            return None
+        
         q = a // m
-        t = m
-        # m is remainder now, process same as Euclid's algo
-        m = a % m
-        a = t
-        t = y
-        # Update y and x
-        y = x - q * y
-        x = t
-    if x < 0:
-        x = x + m0
-    return x
+        a, m = m, a % m
+        x0, x1 = x1 - q * x0, x0
+    
+    # Make sure result is positive
+    if x1 < 0:
+        x1 += m0
+    
+    return x1
 
 def generate_keys():
     """
