@@ -7,6 +7,7 @@ from .routers import users
 from .routers import login 
 from .routers import keys
 from .routers import sessions
+from .routers import pki
 
 # Create main instance of the FastAPI app
 app = FastAPI(
@@ -38,6 +39,7 @@ app.include_router(keys.router, prefix="/keys", tags=["Keys"])
 app.include_router(sessions.router, prefix="/sessions", tags=["Sessions"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
 app.include_router(missions.router, prefix="/missions", tags=["Missions"])
+app.include_router(pki.router, prefix="/pki", tags=["PKI"])
 
 
 @app.get("/", tags=["Root"])

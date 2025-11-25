@@ -38,6 +38,7 @@ function App() {
   const [decryptedPrivateKey, setDecryptedPrivateKey] = useState<string | null>(
     null
   );
+  const [sessionPassword, setSessionPassword] = useState<string | null>(null);
 
   // Efecto para cargar el token y el usuario desde localStorage al iniciar la app
   useEffect(() => {
@@ -88,6 +89,7 @@ function App() {
                   );
                   const privateKeyPem = pki.privateKeyToPem(privateKey);
                   setDecryptedPrivateKey(privateKeyPem);
+                  setSessionPassword(sessionPassword);
                   // If decryption was successful, ensure the password is in sessionStorage for the next refresh
                   sessionStorage.setItem("session_password", sessionPassword);
                   console.log(
@@ -176,6 +178,7 @@ function App() {
           );
           const privateKeyPem = pki.privateKeyToPem(privateKey);
           setDecryptedPrivateKey(privateKeyPem);
+          setSessionPassword(password);
           console.log("DEBUG: Private key decrypted and stored in memory.");
           // --- NEW: Store password in sessionStorage for seamless refresh ---
           sessionStorage.setItem("session_password", password);
@@ -242,6 +245,7 @@ function App() {
           );
           const privateKeyPem = pki.privateKeyToPem(privateKey);
           setDecryptedPrivateKey(privateKeyPem);
+          setSessionPassword(password);
           console.log(
             "DEBUG: Private key decrypted and stored in memory after registration."
           );
@@ -287,6 +291,7 @@ function App() {
     setCurrentUser(null);
     setToken(null);
     setDecryptedPrivateKey(null); // Clear the in-memory private key
+    setSessionPassword(null); // Clear session password from state
     console.log("DEBUG: Logging out. Removing JWT from localStorage.");
     localStorage.removeItem("jwt_token"); // Delete from localStorage
     localStorage.removeItem("encrypted_private_key"); // Delete encrypted key on logout
@@ -322,6 +327,7 @@ function App() {
             onSwitchToAdmin={() => undefined}
             token={token}
             privateKeyPem={decryptedPrivateKey}
+            sessionPassword={sessionPassword}
             showNotification={showNotification}
           />
         ) : null;

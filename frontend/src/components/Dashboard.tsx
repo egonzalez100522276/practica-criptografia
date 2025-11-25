@@ -21,6 +21,7 @@ interface DashboardProps {
   onSwitchToAdmin: () => void;
   showNotification: (type: "success" | "error", message: string) => void;
   privateKeyPem: string | null;
+  sessionPassword: string | null;
 }
 
 export default function Dashboard({
@@ -30,6 +31,7 @@ export default function Dashboard({
   token,
   showNotification,
   privateKeyPem,
+  sessionPassword,
 }: DashboardProps) {
   const [myMissions, setMyMissions] = useState<Mission[]>([]);
   const [receivedMissions, setReceivedMissions] = useState<Mission[]>([]);
@@ -115,7 +117,7 @@ export default function Dashboard({
 
     const missionContent = {
       content: { title, description },
-      // assigned_user_ids: [], // Eliminado: el backend no espera este campo directamente en el cuerpo principal
+      password: sessionPassword,
     };
 
     try {
