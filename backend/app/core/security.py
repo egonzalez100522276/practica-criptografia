@@ -6,6 +6,8 @@ from typing import Optional
 from jose import JWTError, jwt # JSON Object Signing and Encryption
 from pathlib import Path
 from dotenv import load_dotenv
+import base64
+import json
 
 # Cryptography functions
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -13,6 +15,10 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM 
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+# App modules
+from app.core import pki, elgamal
 
 # Load .env
 dotenv_path = Path(__file__).resolve().parent.parent.parent / '.env'
@@ -69,6 +75,49 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
+# --- Symmetric Encryption Helpers ---
+
+def derive_key(password: str, salt: bytes) -> bytes:
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+    )
+    return kdf.derive(password.encode())
+
+def encrypt_data_with_password(data: str, password: str) -> str:
+    """
+    Encrypts string data using a key derived from the password.
+    Returns a base64 encoded string containing salt, nonce, and ciphertext.
+    """
+    salt = os.urandom(16)
+    key = derive_key(password, salt)
+    aesgcm = AESGCM(key)
+    nonce = os.urandom(12)
+    ciphertext = aesgcm.encrypt(nonce, data.encode(), None)
+    
+    # Pack everything: salt (16) + nonce (12) + ciphertext
+    combined = salt + nonce + ciphertext
+    return base64.b64encode(combined).decode('utf-8')
+
+def decrypt_data_with_password(encrypted_data: str, password: str) -> str:
+    """
+    Decrypts data encrypted with encrypt_data_with_password.
+    """
+    try:
+        combined = base64.b64decode(encrypted_data)
+        salt = combined[:16]
+        nonce = combined[16:28]
+        ciphertext = combined[28:]
+        
+        key = derive_key(password, salt)
+        aesgcm = AESGCM(key)
+        plaintext = aesgcm.decrypt(nonce, ciphertext, None)
+        return plaintext.decode('utf-8')
+    except Exception:
+        return None
+
 # --- RSA ---
 
 # Functions
@@ -98,28 +147,56 @@ def serialize_keys_in_pem(private_key, public_key):
     return private_pem, public_pem
 
 
-def generate_user_keys(password: str) -> tuple[str, str]:
+def generate_user_keys(password: str) -> dict:
     """
-    Generate an RSA key pair. The private key is encrypted in PEM format using the user's password.
-    Returns (public_pem, encrypted_private_pem)
+    Generate RSA and ElGamal key pairs.
+    Encrypts private keys with the user's password.
+    Signs public keys with the Server CA.
+    Returns a dictionary with all keys and signatures.
     """
     # 1. Generate RSA key pair
-    private_key, public_key = generate_rsa_key_pair()
+    rsa_private, rsa_public = generate_rsa_key_pair()
 
-    # 2. Serialize public key to PEM (no encryption)
-    public_pem = public_key.public_bytes(
+    # 2. Serialize RSA public key
+    rsa_public_pem = rsa_public.public_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     ).decode("utf-8")
 
-    # 3. Serialize private key to PEM, encrypting it with the user's password
-    encrypted_private_pem = private_key.private_bytes(
+    # 3. Encrypt RSA private key
+    rsa_private_encrypted = rsa_private.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.BestAvailableEncryption(password.encode('utf-8'))
     ).decode("utf-8")
+    
+    # 4. Sign RSA public key with CA
+    rsa_public_signature = pki.sign_data(rsa_public_pem.encode())
+    rsa_public_signature_b64 = base64.b64encode(rsa_public_signature).decode('utf-8')
 
-    return public_pem, encrypted_private_pem
+    # 5. Generate ElGamal key pair
+    elgamal_public, elgamal_private = elgamal.generate_keys()
+    # elgamal_public is (P, G, y)
+    # elgamal_private is x (int)
+    
+    # Serialize ElGamal public key to JSON string
+    elgamal_public_str = json.dumps(elgamal_public)
+    
+    # 6. Encrypt ElGamal private key
+    elgamal_private_encrypted = encrypt_data_with_password(str(elgamal_private), password)
+    
+    # 7. Sign ElGamal public key with CA
+    elgamal_public_signature = pki.sign_data(elgamal_public_str.encode())
+    elgamal_public_signature_b64 = base64.b64encode(elgamal_public_signature).decode('utf-8')
+
+    return {
+        "rsa_public": rsa_public_pem,
+        "rsa_private_encrypted": rsa_private_encrypted,
+        "rsa_public_signature": rsa_public_signature_b64,
+        "elgamal_public": elgamal_public_str,
+        "elgamal_private_encrypted": elgamal_private_encrypted,
+        "elgamal_public_signature": elgamal_public_signature_b64
+    }
 
 
 def decrypt_private_key(encrypted_private_key, password):

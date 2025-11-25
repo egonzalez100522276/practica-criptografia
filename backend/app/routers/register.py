@@ -35,12 +35,24 @@ def _register_user_logic(user_data: user_schema.UserCreate, role: str, cursor = 
             password_hash=hashed_password
         )
 
-        # 4. Generate RSA key pair (private key is encrypted with password)
-        public_pem, encrypted_private_pem = generate_user_keys(user_data.password)
+        # 4. Generate RSA and ElGamal key pairs (private keys are encrypted with password)
+        keys = generate_user_keys(user_data.password)
 
         # 5. Save public and private keys
-        user_service.save_user_public_key(cursor=cursor, user_id=created_user.id, public_key=public_pem)
-        user_service.save_user_private_key(cursor=cursor, user_id=created_user.id, encrypted_private_key=encrypted_private_pem)
+        user_service.save_user_public_key(
+            cursor=cursor, 
+            user_id=created_user.id, 
+            public_key=keys["rsa_public"],
+            public_key_signature=keys["rsa_public_signature"],
+            elgamal_public_key=keys["elgamal_public"],
+            elgamal_public_key_signature=keys["elgamal_public_signature"]
+        )
+        user_service.save_user_private_key(
+            cursor=cursor, 
+            user_id=created_user.id, 
+            encrypted_private_key=keys["rsa_private_encrypted"],
+            elgamal_private_key_encrypted=keys["elgamal_private_encrypted"]
+        )
 
         # The commit is handled automatically by the `get_db` dependency on successful exit.
         
@@ -57,7 +69,7 @@ def _register_user_logic(user_data: user_schema.UserCreate, role: str, cursor = 
         return {
             "access_token": access_token,
             "token_type": "bearer",
-            "encrypted_private_key": encrypted_private_pem
+            "encrypted_private_key": keys["rsa_private_encrypted"]
         }
     except Exception as e:
         # The rollback is handled automatically by the `get_db` dependency on exception.

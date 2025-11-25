@@ -26,26 +26,26 @@ def create_user(cursor, username: str, email: str, role: str, password_hash: str
     return UserObj(user_id, username, email, role)
 
 
-def save_user_public_key(cursor, user_id: int, public_key: str):
+def save_user_public_key(cursor, user_id: int, public_key: str, public_key_signature: str, elgamal_public_key: str, elgamal_public_key_signature: str):
     """ Insert public key into DB using the provided cursor. Does NOT commit. """
     cursor.execute("""
-        INSERT INTO user_keys (user_id, public_key)
-        VALUES (?, ?) 
-    """, (user_id, public_key))
+        INSERT INTO user_keys (user_id, public_key, public_key_signature, elgamal_public_key, elgamal_public_key_signature)
+        VALUES (?, ?, ?, ?, ?) 
+    """, (user_id, public_key, public_key_signature, elgamal_public_key, elgamal_public_key_signature))
 
-def save_user_private_key(cursor, user_id: int, encrypted_private_key: str):
+def save_user_private_key(cursor, user_id: int, encrypted_private_key: str, elgamal_private_key_encrypted: str):
     """ Insert private key into DB using the provided cursor. Does NOT commit. """
     cursor.execute("""
-        INSERT INTO user_private_keys (user_id, private_key_encrypted)
-        VALUES (?, ?)
-    """, (user_id, encrypted_private_key))
+        INSERT INTO user_private_keys (user_id, private_key_encrypted, elgamal_private_key_encrypted)
+        VALUES (?, ?, ?)
+    """, (user_id, encrypted_private_key, elgamal_private_key_encrypted))
 
 def get_user_public_key(cursor, user_id: int):
     """
     Finds a user's public key by user_id.
     """
     cursor.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
-    cursor.execute("SELECT public_key FROM user_keys WHERE user_id = ?", (user_id,))
+    cursor.execute("SELECT * FROM user_keys WHERE user_id = ?", (user_id,))
     key = cursor.fetchone()
     return key
 
@@ -54,7 +54,7 @@ def get_user_private_key(cursor, user_id: int):
     Finds a user's private key data by user_id.
     """
     cursor.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
-    cursor.execute("SELECT private_key_encrypted FROM user_private_keys WHERE user_id = ?", (user_id,))
+    cursor.execute("SELECT * FROM user_private_keys WHERE user_id = ?", (user_id,))
     key = cursor.fetchone()
     return key
 

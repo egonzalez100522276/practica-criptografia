@@ -1,10 +1,12 @@
 import json
-from ..core.security import encrypt_with_aes, decrypt_private_key
+from ..core.security import encrypt_with_aes, decrypt_private_key, decrypt_data_with_password
+from ..core import elgamal, pki
 from ..services import user_service
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from ..schemas.missions import MissionContent # Import MissionContent
+import base64
 
 def get_missions(cursor) -> list:
     """
@@ -39,29 +41,44 @@ def get_shared_missions_for_user(cursor, user_id: int) -> list:
     return missions
 
 
-def create_mission(cursor, content: MissionContent, creator_id: int) -> dict: # Changed content type
+def create_mission(cursor, content: MissionContent, creator_id: int, creator_password: str) -> dict: # Changed content type
     """
-    Creates a new mission, encrypts its content, and grants access to specified users.
+    Creates a new mission, encrypts its content, signs it, and grants access to specified users.
     This is an atomic transaction managed by the `get_db` dependency.
     """
 
     # Convert the Pydantic model to a JSON string before encrypting
-    
     content_json_str = content.model_dump_json() # Use model_dump_json() for Pydantic v2
     
-    # Part 2: Add signature to the content.
-    # data['signature'] = sign(data['title'] + data['description'], user_pk)
-    # La función sign hay que hacerla en security, habrá que usar algoritmos de firma de cryptography
+    # --- ElGamal Signing ---
+    # 1. Get creator's encrypted ElGamal private key
+    creator_keys = user_service.get_user_private_key(cursor, creator_id)
+    if not creator_keys or not creator_keys.get('elgamal_private_key_encrypted'):
+        raise Exception("ElGamal private key not found for user.")
+        
+    elgamal_private_encrypted = creator_keys['elgamal_private_key_encrypted']
+    
+    # 2. Decrypt ElGamal private key
+    elgamal_private_key_str = decrypt_data_with_password(elgamal_private_encrypted, creator_password)
+    if not elgamal_private_key_str:
+        raise Exception("Failed to decrypt ElGamal private key (wrong password?).")
+    elgamal_private_key = int(elgamal_private_key_str)
+    
+    # 3. Sign the content (hash of title + description)
+    # We sign the raw content string to ensure integrity of what the user sees
+    signature_tuple = elgamal.sign(content_json_str, elgamal_private_key)
+    # Store signature as "r,s" string
+    signature_str = f"{signature_tuple[0]},{signature_tuple[1]}"
 
 
-
+    # --- AES Encryption ---
     # 1. Encrypt the mission content with a new, single-use AES key
     encrypted_content_hex, nonce_hex, aes_key_bytes = encrypt_with_aes(content_json_str) # Get aes_key_bytes
     
     # 2. Insert the encrypted mission into the database
     cursor.execute(
-        "INSERT INTO missions (content_encrypted, iv, creator_id) VALUES (?, ?, ?)",
-        (encrypted_content_hex, nonce_hex, creator_id)
+        "INSERT INTO missions (content_encrypted, iv, signature, creator_id) VALUES (?, ?, ?, ?)",
+        (encrypted_content_hex, nonce_hex, signature_str, creator_id)
     )
     mission_id = cursor.lastrowid
 
@@ -79,6 +96,15 @@ def create_mission(cursor, content: MissionContent, creator_id: int) -> dict: # 
             raise Exception(f"Could not find public key for user ID: {user_id}. Mission creation aborted.")
 
         public_key_pem = public_key_data['public_key']
+        
+        # VERIFY CA SIGNATURE
+        public_key_sig_b64 = public_key_data.get('public_key_signature')
+        if not public_key_sig_b64:
+             raise Exception(f"Public key for user {user_id} is not signed by CA. Security check failed.")
+        
+        if not pki.verify_signature(public_key_pem.encode(), base64.b64decode(public_key_sig_b64)):
+             raise Exception(f"CA Signature verification failed for user {user_id}. Public key may be tampered.")
+
         user_public_key = serialization.load_pem_public_key(public_key_pem.encode('utf-8'))
 
         encrypted_aes_key_for_user = user_public_key.encrypt(
@@ -92,7 +118,12 @@ def create_mission(cursor, content: MissionContent, creator_id: int) -> dict: # 
         )
 
     # The content returned should be the original content, not the encrypted one.
-    return {"id": mission_id, "content": content.model_dump(), "creator_id": creator_id} # Return original content for response
+    return {
+        "id": mission_id, 
+        "content": content.model_dump(), 
+        "creator_id": creator_id,
+        "signature": signature_str
+    } 
 
 
 def decrypt_mission(cursor, mission_id: int, user_id: int, user_private_key) -> dict | None:
@@ -136,8 +167,11 @@ def decrypt_mission(cursor, mission_id: int, user_id: int, user_private_key) -> 
 
     # 6. Return the full mission object with the decrypted content
     return {
-        "id": mission['id'], "creator_id": mission['creator_id'], 
-        "creator_username": creator_username, "content": json.loads(decrypted_content_json)
+        "id": mission['id'], 
+        "creator_id": mission['creator_id'], 
+        "creator_username": creator_username, 
+        "content": json.loads(decrypted_content_json),
+        "signature": mission['signature']
     }
 
 def decrypt_missions(cursor, missions: list, user_id: int, user_private_key) -> list:
@@ -180,7 +214,17 @@ def share_mission(cursor, mission_id: int, sharer_id: int, sharer_private_key, t
         if not public_key_data or not public_key_data.get('public_key'):
             raise Exception(f"Could not find public key for user ID: {user_id}")
 
-        target_public_key = serialization.load_pem_public_key(public_key_data['public_key'].encode('utf-8'))
+        public_key_pem = public_key_data['public_key']
+
+        # VERIFY CA SIGNATURE
+        public_key_sig_b64 = public_key_data.get('public_key_signature')
+        if not public_key_sig_b64:
+             raise Exception(f"Public key for user {user_id} is not signed by CA. Security check failed.")
+        
+        if not pki.verify_signature(public_key_pem.encode(), base64.b64decode(public_key_sig_b64)):
+             raise Exception(f"CA Signature verification failed for user {user_id}. Public key may be tampered.")
+
+        target_public_key = serialization.load_pem_public_key(public_key_pem.encode('utf-8'))
 
         encrypted_aes_key_for_target = target_public_key.encrypt(
             aes_key,

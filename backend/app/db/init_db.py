@@ -30,6 +30,9 @@ def create_tables(conn=None) -> None:
         CREATE TABLE IF NOT EXISTS user_keys (
             user_id INTEGER PRIMARY KEY,
             public_key TEXT NOT NULL,
+            public_key_signature TEXT,
+            elgamal_public_key TEXT,
+            elgamal_public_key_signature TEXT,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         );
     """)
@@ -39,6 +42,7 @@ def create_tables(conn=None) -> None:
         CREATE TABLE IF NOT EXISTS user_private_keys (
             user_id INTEGER PRIMARY KEY,
             private_key_encrypted TEXT NOT NULL,
+            elgamal_private_key_encrypted TEXT,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         );
     """)
@@ -49,6 +53,7 @@ def create_tables(conn=None) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             content_encrypted TEXT NOT NULL,
             iv TEXT NOT NULL,
+            signature TEXT,
             creator_id INTEGER,
             FOREIGN KEY (creator_id) REFERENCES users (id) ON DELETE CASCADE
         );

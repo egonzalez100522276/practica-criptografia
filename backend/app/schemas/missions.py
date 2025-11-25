@@ -14,11 +14,13 @@ class MissionInDB(BaseModel):
     creator_id: int
     content_encrypted: str
     iv: str
+    signature: str | None = None
 
 class MissionResponse(MissionCreate):
     id: int
     creator_id: int
     creator_username: str | None = None
+    signature: str | None = None
 
 class MissionDecryptRequest(BaseModel):
     password: str
