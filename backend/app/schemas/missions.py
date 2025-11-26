@@ -21,6 +21,7 @@ class MissionResponse(MissionCreate):
     creator_id: int
     creator_username: str | None = None
     signature: str | None = None
+    signature_valid: bool | None = None
 
 class MissionDecryptRequest(BaseModel):
     password: str

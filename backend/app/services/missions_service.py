@@ -122,7 +122,8 @@ def create_mission(cursor, content: MissionContent, creator_id: int, creator_pas
         "id": mission_id, 
         "content": content.model_dump(), 
         "creator_id": creator_id,
-        "signature": signature_str
+        "signature": signature_str,
+        "signature_valid": True
     } 
 
 
@@ -165,13 +166,36 @@ def decrypt_mission(cursor, mission_id: int, user_id: int, user_private_key) -> 
     creator = user_service.get_user_by_id(cursor, mission['creator_id'])
     creator_username = creator['username'] if creator else 'Unknown Agent'
 
+    # --- Verify ElGamal signature for integrity/authenticity ---
+    signature_valid = None
+    try:
+        if mission['signature']:
+            sig_parts = mission['signature'].split(",")
+            if len(sig_parts) == 2:
+                signature_tuple = (int(sig_parts[0]), int(sig_parts[1]))
+                creator_keys = user_service.get_user_public_key(cursor, mission['creator_id'])
+                if creator_keys and creator_keys.get('elgamal_public_key'):
+                    elgamal_public = json.loads(creator_keys['elgamal_public_key'])
+                    # elgamal_public = (P, G, y)
+                    public_key_y = elgamal_public[2]
+                    signature_valid = elgamal.verify(decrypted_content_json, signature_tuple, public_key_y)
+                else:
+                    signature_valid = False
+            else:
+                signature_valid = False
+        else:
+            signature_valid = False
+    except Exception:
+        signature_valid = False
+
     # 6. Return the full mission object with the decrypted content
     return {
         "id": mission['id'], 
         "creator_id": mission['creator_id'], 
         "creator_username": creator_username, 
         "content": json.loads(decrypted_content_json),
-        "signature": mission['signature']
+        "signature": mission['signature'],
+        "signature_valid": signature_valid
     }
 
 def decrypt_missions(cursor, missions: list, user_id: int, user_private_key) -> list:
