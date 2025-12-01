@@ -16,7 +16,8 @@ from cryptography.hazmat.primitives.asymmetric import padding, ed25519
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.exceptions import InvalidSignature
-
+from cryptography import x509
+from cryptography.x509.oid import NameOID
 # Load .env
 dotenv_path = Path(__file__).resolve().parent.parent.parent / '.env'
 load_dotenv(dotenv_path)
@@ -258,3 +259,4 @@ def encrypt_with_aes(content: str) -> tuple[str, str, bytes]: # Changed return t
     encrypted_content = aesgcm.encrypt(nonce, content.encode("utf-8"), None) # content is str, encode to bytes
 
     return encrypted_content.hex(), nonce.hex(), aes_key # Return aes_key as bytes, others as hex strings
+
