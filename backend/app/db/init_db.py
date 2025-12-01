@@ -25,12 +25,11 @@ def create_tables(conn=None) -> None:
         );
     """)
 
-    # Table for user public keys + certificate
+    # Table for user public keys (stored as X.509 certificates)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_keys (
             user_id INTEGER PRIMARY KEY,
-            public_key TEXT NOT NULL,
-            x509_certificate TEXT,
+            x509_certificate TEXT NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         );
     """)

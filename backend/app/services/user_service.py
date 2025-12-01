@@ -1,4 +1,7 @@
 from app.db.database import get_connection
+from app.core.ca import generate_or_load_ca, validate_user_certificate
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
 
 class UserObj:
     def __init__(self, id, username, email, role):
@@ -27,12 +30,12 @@ def create_user(cursor, username: str, email: str, role: str, password_hash: str
 
 
 # --- RSA keys ---
-def save_user_public_key(cursor, user_id: int, public_key: str):
-    """ Insert RSA public key into DB using the provided cursor. Does NOT commit. """
+def save_user_certificate(cursor, user_id: int, certificate_pem: str):
+    """ Insert User X.509 certificate into DB using the provided cursor. Does NOT commit. """
     cursor.execute("""
-        INSERT INTO user_keys (user_id, public_key)
+        INSERT INTO user_keys (user_id, x509_certificate)
         VALUES (?, ?) 
-    """, (user_id, public_key))
+    """, (user_id, certificate_pem))
 
 def save_user_private_key(cursor, user_id: int, encrypted_private_key: str):
     """ Insert RSA private key into DB using the provided cursor. Does NOT commit. """
@@ -44,11 +47,31 @@ def save_user_private_key(cursor, user_id: int, encrypted_private_key: str):
 def get_user_public_key(cursor, user_id: int):
     """
     Finds a user's RSA public key by user_id.
+    It retrieves the X.509 certificate, validates it, and extracts the public key.
     """
     cursor.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
-    cursor.execute("SELECT public_key FROM user_keys WHERE user_id = ?", (user_id,))
-    key = cursor.fetchone()
-    return key
+    cursor.execute("SELECT x509_certificate FROM user_keys WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    
+    if not row:
+        return None
+
+    cert_pem = row['x509_certificate']
+    
+    # Validate certificate
+    _, ca_cert = generate_or_load_ca()
+    if not validate_user_certificate(cert_pem, ca_cert):
+        raise ValueError(f"Invalid or expired certificate for user {user_id}")
+
+    # Extract public key from certificate
+    cert = x509.load_pem_x509_certificate(cert_pem.encode())
+    public_key = cert.public_key()
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode('utf-8')
+
+    return {'public_key': public_pem}
 
 def get_user_private_key(cursor, user_id: int):
     """

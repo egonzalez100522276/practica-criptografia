@@ -46,7 +46,7 @@ def _register_user_logic(user_data: user_schema.UserCreate, role: str, cursor = 
         # 6. Save public and private keys (with x.509 certificate)
 
         # RSA
-        user_service.save_user_public_key(cursor=cursor, user_id=created_user.id, public_key=public_pem)
+        user_service.save_user_certificate(cursor=cursor, user_id=created_user.id, certificate_pem=user_cert_pem)
         user_service.save_user_private_key(cursor=cursor, user_id=created_user.id, encrypted_private_key=encrypted_private_pem)
 
         # Ed25519
