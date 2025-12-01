@@ -149,7 +149,8 @@ def decrypt_mission(cursor, mission_id: int, user_id: int, user_private_key) -> 
     # 6. Return the full mission object with the decrypted content
     return {
         "id": mission['id'], "creator_id": mission['creator_id'], 
-        "creator_username": creator_username, "content": json.loads(decrypted_content_json)
+        "creator_username": creator_username, "content": json.loads(decrypted_content_json),
+        "signature": mission['signature']
     }
 
 def decrypt_missions(cursor, missions: list, user_id: int, user_private_key) -> list:
