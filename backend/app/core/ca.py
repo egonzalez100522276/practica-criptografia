@@ -2,6 +2,7 @@ from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.exceptions import InvalidSignature
 from datetime import datetime, timedelta
 from pathlib import Path
 import os
@@ -115,6 +116,46 @@ def create_user_certificate(user_public_pem: str, username: str,
     # Convert to PEM
     user_cert_pem = user_cert.public_bytes(serialization.Encoding.PEM).decode("utf-8")
     return user_cert_pem
+
+
+
+def validate_user_certificate(user_cert_pem: str, ca_certificate: x509.Certificate) -> bool:
+    """
+    Validates a user certificate against the root CA.
+
+    Args:
+        user_cert_pem: User certificate in PEM format.
+        ca_certificate: Root CA certificate.
+
+    Returns:
+        True if the certificate is valid, False otherwise.
+    """
+    try:
+        # Load the user certificate
+        user_cert = x509.load_pem_x509_certificate(user_cert_pem.encode())
+
+        # 1. Check validity date
+        now = datetime.utcnow()
+        if now < user_cert.not_valid_before or now > user_cert.not_valid_after:
+            return False
+
+        # 2. Verify signature with the CA public key
+        ca_public_key = ca_certificate.public_key()
+        ca_public_key.verify(
+            signature=user_cert.signature,
+            data=user_cert.tbs_certificate_bytes,
+            padding=padding.PKCS1v15(),
+            algorithm=user_cert.signature_hash_algorithm,
+        )
+
+        return True
+
+    except InvalidSignature:
+        # The signature does not match → fake certificate
+        return False
+    except Exception as e:
+        # Any other error (invalid format, etc.)
+        return False
 
 
 if __name__ == "__main__":
