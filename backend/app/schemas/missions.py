@@ -4,19 +4,22 @@ from pydantic import BaseModel, Field
 class MissionContent(BaseModel):
     title: str = Field(..., min_length=3, max_length=100)
     description: str = Field(max_length=2000)
-    # signature: str = None
 
 class MissionCreate(BaseModel):
     content: MissionContent
+    password: str
 
 class MissionInDB(BaseModel):
     id: int
-    creator_id: int
     content_encrypted: str
     iv: str
+    signature: str
+    creator_id: int
 
-class MissionResponse(MissionCreate):
+class MissionResponse(BaseModel):
     id: int
+    content: MissionContent
+    signature: str
     creator_id: int
     creator_username: str | None = None
 

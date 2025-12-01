@@ -67,6 +67,7 @@ def create_tables(conn=None) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             content_encrypted TEXT NOT NULL,
             iv TEXT NOT NULL,
+            signature TEXT NOT NULL,
             creator_id INTEGER,
             FOREIGN KEY (creator_id) REFERENCES users (id) ON DELETE CASCADE
         );

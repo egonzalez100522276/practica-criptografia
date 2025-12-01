@@ -13,6 +13,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM 
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import padding, ed25519
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 # Load .env
 dotenv_path = Path(__file__).resolve().parent.parent.parent / '.env'
@@ -112,14 +114,14 @@ def generate_ed25519_keys(password: str) -> tuple[str, str]:
     ed_public_pem = ed_public.public_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo
-    ).decode()
+    ).decode("utf-8")
 
     # Serialize private key to PEM, encrypted with the user's password
     ed_private_encrypted_pem = ed_private.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.BestAvailableEncryption(password.encode())
-    ).decode()
+    ).decode("utf-8")
 
     return ed_public_pem, ed_private_encrypted_pem
 
@@ -177,6 +179,72 @@ def decrypt_private_key(encrypted_private_key, password):
         # This could fail if the password is wrong, or data is corrupt
         return None
 
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives import serialization
+
+def decrypt_ed_private_key(encrypted_private_key_data, password: str) -> Ed25519PrivateKey | None:
+    """
+    Decrypts an Ed25519 private key.
+    
+    - Accepts either:
+      - A string PEM directly
+      - A dict containing {'private_key_encrypted': PEM string}
+    - Returns the Ed25519PrivateKey object, or None if decryption fails.
+    """
+    try:
+        # Si es un dict, extraemos la cadena PEM
+        if isinstance(encrypted_private_key_data, dict):
+            pem_str = encrypted_private_key_data.get("private_key_encrypted")
+            if not pem_str:
+                return None
+        elif isinstance(encrypted_private_key_data, str):
+            pem_str = encrypted_private_key_data
+        else:
+            return None
+
+        # Normalizar saltos de línea y eliminar espacios extra
+        pem_str = "\n".join([line.strip() for line in pem_str.strip().splitlines() if line.strip()])
+
+        # Cargar la clave privada
+        private_key = serialization.load_pem_private_key(
+            pem_str.encode("utf-8"),
+            password=password.encode("utf-8")
+        )
+
+        # Comprobar que es Ed25519
+        if not isinstance(private_key, Ed25519PrivateKey):
+            return None
+
+        return private_key
+
+    except Exception:
+        return None
+
+def sign(content: str, private_key: Ed25519PrivateKey) -> str:
+    """
+    Sign a piece of content using the user's Ed25519 private key.
+    Returns the signature as a base64 string.
+    """
+    if not private_key:
+        raise ValueError("Private key must be provided.")
+    if not isinstance(private_key, Ed25519PrivateKey):
+        raise ValueError("Private key must be an instance of Ed25519PrivateKey.")
+    return private_key.sign(content.encode("utf-8")).hex()
+
+def verify(content: str, signature: str, public_key: Ed25519PublicKey) -> bool:
+    """
+    Verify a signature using the user's Ed25519 public key.
+    Returns True if the signature is valid, False otherwise.
+    """
+    if not public_key:
+        raise ValueError("Public key must be provided.")
+    if not isinstance(public_key, Ed25519PublicKey):
+        raise ValueError("Public key must be an instance of Ed25519PublicKey.")
+    try:
+        public_key.verify(bytes.fromhex(signature), content.encode("utf-8"))
+        return True
+    except InvalidSignature:
+        return False
 
 # --- AES ---
 def encrypt_with_aes(content: str) -> tuple[str, str, bytes]: # Changed return type hint

@@ -25,8 +25,11 @@ def create_mission(
     """
     Creates a new mission. Requires authentication.
     The mission content is encrypted and access is granted to the creator and the admins.
+    The password is used to sign the mission content.
     """
-    created_mission = missions_service.create_mission(cursor, content=mission_data.content, creator_id=current_user['id'])
+    if not mission_data.password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password is required to sign the mission content.")
+    created_mission = missions_service.create_mission(cursor, content=mission_data.content, creator_id=current_user['id'], password=mission_data.password)
     return created_mission
 
 @router.post("/mine/decrypt", response_model=list[mission_schema.MissionResponse])
