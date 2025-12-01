@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM 
 from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric import padding, ed25519
 
 # Load .env
 dotenv_path = Path(__file__).resolve().parent.parent.parent / '.env'
@@ -98,7 +98,33 @@ def serialize_keys_in_pem(private_key, public_key):
     return private_pem, public_pem
 
 
-def generate_user_keys(password: str) -> tuple[str, str]:
+# --- Ed25519 ---
+def generate_ed25519_keys(password: str) -> tuple[str, str]:
+    """
+    Generate an Ed25519 key pair. The private key is encrypted in PEM format using the user's password.
+    Returns (public_pem, encrypted_private_pem)
+    """
+    # Generate pair Ed25519
+    ed_private = ed25519.Ed25519PrivateKey.generate()
+    ed_public = ed_private.public_key()
+
+    # Serialize public key to PEM
+    ed_public_pem = ed_public.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode()
+
+    # Serialize private key to PEM, encrypted with the user's password
+    ed_private_encrypted_pem = ed_private.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.BestAvailableEncryption(password.encode())
+    ).decode()
+
+    return ed_public_pem, ed_private_encrypted_pem
+
+
+def generate_rsa_keys(password: str) -> tuple[str, str]:
     """
     Generate an RSA key pair. The private key is encrypted in PEM format using the user's password.
     Returns (public_pem, encrypted_private_pem)
@@ -120,6 +146,19 @@ def generate_user_keys(password: str) -> tuple[str, str]:
     ).decode("utf-8")
 
     return public_pem, encrypted_private_pem
+
+
+def generate_user_keys(password: str) -> tuple[str, str, str, str]:
+    """
+    Generate RSA and Ed25519 key pairs. The private keys are encrypted in PEM format using the user's password.
+    Returns (rsa_public_pem, rsa_private_encrypted_pem, ed_public_pem, ed_private_encrypted_pem)
+    """
+    # RSA
+    rsa_pub, rsa_priv_encrypted = generate_rsa_keys(password)
+    
+    # Ed25519
+    ed_pub, ed_priv_encrypted = generate_ed25519_keys(password)
+    return rsa_pub, rsa_priv_encrypted, ed_pub, ed_priv_encrypted
 
 
 def decrypt_private_key(encrypted_private_key, password):

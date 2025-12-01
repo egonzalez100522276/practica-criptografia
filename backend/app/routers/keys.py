@@ -14,6 +14,8 @@ def get_user_keys(user_id: int, cursor = Depends(get_db)):
     """
     public_key_data = user_service.get_user_public_key(cursor, user_id)
     private_key_data = user_service.get_user_private_key(cursor, user_id)
+    ed_public_key_data = user_service.get_user_ed_public_key(cursor, user_id)
+    ed_private_key_data = user_service.get_user_ed_private_key(cursor, user_id)
 
     if not public_key_data or not private_key_data:
         raise HTTPException(
@@ -25,7 +27,9 @@ def get_user_keys(user_id: int, cursor = Depends(get_db)):
     return key_schema.UserKeysResponse(
         user_id=user_id,
         public_key=public_key_data['public_key'],
-        encrypted_private_key=private_key_data['private_key_encrypted']
+        encrypted_private_key=private_key_data['private_key_encrypted'],
+        ed_public_key=ed_public_key_data['public_key'],
+        ed_encrypted_private_key=ed_private_key_data['private_key_encrypted']
     )
 
 @router.post("/decrypt", response_model=key_schema.DecryptedPrivateKeyResponse)

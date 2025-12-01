@@ -5,6 +5,7 @@ from ..services import user_service, session_service
 from ..db.database import get_db
 from ..core.security import generate_user_keys, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, decrypt_private_key
 
+
 # Other
 import os
 from base64 import b64encode
@@ -35,15 +36,19 @@ def _register_user_logic(user_data: user_schema.UserCreate, role: str, cursor = 
             password_hash=hashed_password
         )
 
-        # 4. Generate RSA key pair (private key is encrypted with password)
-        public_pem, encrypted_private_pem = generate_user_keys(user_data.password)
+        # 4. Generate RSA and Ed25519 key pairs (private keys are encrypted with password)
+        public_pem, encrypted_private_pem, ed_public_pem, ed_encrypted_private_pem = generate_user_keys(user_data.password)
 
         # 5. Save public and private keys
+
+        # RSA
         user_service.save_user_public_key(cursor=cursor, user_id=created_user.id, public_key=public_pem)
         user_service.save_user_private_key(cursor=cursor, user_id=created_user.id, encrypted_private_key=encrypted_private_pem)
 
-        # The commit is handled automatically by the `get_db` dependency on successful exit.
-        
+        # Ed25519
+        user_service.save_user_ed_public_key(cursor=cursor, user_id=created_user.id, public_key=ed_public_pem)
+        user_service.save_user_ed_private_key(cursor=cursor, user_id=created_user.id, encrypted_private_key=ed_encrypted_private_pem)
+
         # 6. Create access token
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         expire_time = datetime.now(timezone.utc) + access_token_expires

@@ -34,9 +34,27 @@ def create_tables(conn=None) -> None:
         );
     """)
 
+    # Table for user Ed25519 public keys
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_ed_keys (
+            user_id INTEGER PRIMARY KEY,
+            public_key TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+    """)
+
     # Table for user private keys
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_private_keys (
+            user_id INTEGER PRIMARY KEY,
+            private_key_encrypted TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+    """)
+
+    # Table for user Ed25519 private keys
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_ed_private_keys (
             user_id INTEGER PRIMARY KEY,
             private_key_encrypted TEXT NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
@@ -114,4 +132,4 @@ if __name__ == "__main__":
     # seed_demo_user(conn)
     conn.close()
 
-    print(f"✅ Database initialized with tables: users, user_keys, user_private_keys, missions, mission_access, sessions ({DB_PATH})")
+    print(f"✅ Database initialized with tables: users, user_keys, user_private_keys, user_ed_keys, user_ed_private_keys, missions, mission_access, sessions ({DB_PATH})")
