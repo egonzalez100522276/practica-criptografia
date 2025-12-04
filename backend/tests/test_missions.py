@@ -21,10 +21,11 @@ def test_create_and_decrypt_own_mission(client: TestClient, register_user):
 
     # 2. Create a mission
     mission_content = {"title": "Solo Mission", "description": "My eyes only."}
+
     response_create = client.post(
         "/missions/",
         headers={"Authorization": f"Bearer {agent1_token}"},
-        json={"content": mission_content},
+        json={"content": mission_content, "password": agent1_password},
     )
     assert response_create.status_code == 201
     created_mission = response_create.json()
@@ -72,7 +73,7 @@ def test_share_and_receive_mission(client: TestClient, register_user):
     response_create = client.post(
         "/missions/",
         headers={"Authorization": f"Bearer {creator_token}"},
-        json={"content": mission_content},
+        json={"content": mission_content, "password": creator_password},
     )
     assert response_create.status_code == 201
     mission_id = response_create.json()["id"]
