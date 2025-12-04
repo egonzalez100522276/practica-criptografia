@@ -4,6 +4,7 @@ from ..schemas import user as user_schema, token as token_schema
 from ..services import user_service, session_service
 from ..db.database import get_db
 from ..core.security import generate_user_keys, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, decrypt_private_key
+from ..core.ca import generate_or_load_ca, create_user_certificate
 
 # Other
 import os
@@ -35,23 +36,33 @@ def _register_user_logic(user_data: user_schema.UserCreate, role: str, cursor = 
             password_hash=hashed_password
         )
 
-        # 4. Generate RSA key pair (private key is encrypted with password)
-        public_pem, encrypted_private_pem = generate_user_keys(user_data.password)
+        # 4. Generate RSA and Ed25519 key pairs (private keys are encrypted with password)
+        public_pem, encrypted_private_pem, ed_public_pem, ed_encrypted_private_pem = generate_user_keys(user_data.password)
 
-        # 5. Save public and private keys
-        user_service.save_user_public_key(cursor=cursor, user_id=created_user.id, public_key=public_pem)
+        # 5. Generate X.509 certificates
+        ca_private_key, ca_certificate = generate_or_load_ca()
+        user_cert_pem = create_user_certificate(public_pem, user_data.username, ca_private_key, ca_certificate)
+        user_ed_cert_pem = create_user_certificate(ed_public_pem, user_data.username, ca_private_key, ca_certificate)
+
+        # 6. Save public and private keys (with x.509 certificate)
+
+        # RSA
+        user_service.save_user_certificate(cursor=cursor, user_id=created_user.id, certificate_pem=user_cert_pem)
         user_service.save_user_private_key(cursor=cursor, user_id=created_user.id, encrypted_private_key=encrypted_private_pem)
 
-        # The commit is handled automatically by the `get_db` dependency on successful exit.
-        
-        # 6. Create access token
+        # Ed25519
+
+        user_service.save_user_ed_certificate(cursor=cursor, user_id=created_user.id, certificate_pem=user_ed_cert_pem)
+        user_service.save_user_ed_private_key(cursor=cursor, user_id=created_user.id, encrypted_private_key=ed_encrypted_private_pem)
+
+        # 7. Create access token
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         expire_time = datetime.now(timezone.utc) + access_token_expires
         access_token = create_access_token(
             data={"sub": created_user.username, "user_id": created_user.id, "role": created_user.role, "exp": expire_time}
         )
         
-        # 7. Save the session to the database using the same transaction
+        #  8. Save the session to the database using the same transaction
         session_service.save_session(cursor, user_id=created_user.id, sub=created_user.username, role=created_user.role, jwt_token=access_token, expires_at=expire_time)
 
         return {

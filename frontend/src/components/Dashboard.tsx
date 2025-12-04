@@ -39,83 +39,82 @@ export default function Dashboard({
     null
   );
   const [activeTab, setActiveTab] = useState<"my" | "received">("my");
+  const [loading, setLoading] = useState(false);
 
+  // --- Fetch missions with timer ---
   useEffect(() => {
-    const fetchAllMissions = async () => {
-      const storedToken = localStorage.getItem("jwt_token");
+    if (!token || !privateKeyPem) {
+      showNotification("error", "Session data is missing. Please log in again.");
+      onLogout();
+      return;
+    }
 
-      if (!storedToken || !privateKeyPem) {
-        showNotification(
-          "error",
-          "Session data is missing. Please log in again."
-        );
-        onLogout(); // This will clear the session and redirect to login
-        return; // Stop further execution
-      }
+    const fetchAllMissions = async () => {
+      setLoading(true);
 
       const fetchEndpoint = async (
         endpoint: string,
         setter: React.Dispatch<React.SetStateAction<Mission[]>>
       ) => {
         try {
-          const response = await fetch(
-            `http://127.0.0.1:8000/missions${endpoint}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${storedToken}`,
-              },
-              body: JSON.stringify({ private_key_pem: privateKeyPem }),
-            }
-          );
+          const response = await fetch(`http://127.0.0.1:8000/missions${endpoint}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ private_key_pem: privateKeyPem }),
+          });
 
           if (response.ok) {
-            const decryptedMissionsData = await response.json();
-            const formattedMissions: Mission[] = decryptedMissionsData.map(
-              (m: any) => ({
-                id: m.id.toString(),
-                title: m.content.title,
-                description: m.content.description,
-                createdBy: m.creator_username || m.creator_id.toString(),
-                assignedTo: user.id.toString(), // The current user is the assignee
-                createdAt: new Date().toISOString(), // Backend doesn't provide this yet
-              })
-            );
-            setter(formattedMissions);
+            const data = await response.json();
+            const missions: Mission[] = data.map((m: any) => ({
+              id: m.id.toString(),
+              title: m.content.title,
+              description: m.content.description,
+              createdBy: m.creator_username || m.creator_id.toString(),
+              assignedTo: user.id.toString(),
+              createdAt: new Date().toISOString(),
+            }));
+            setter(missions);
           } else {
-            showNotification(
-              "error",
-              `Failed to fetch missions from ${endpoint}.`
-            );
+            showNotification("error", `Failed to fetch missions from ${endpoint}.`);
           }
-        } catch (error) {
-          showNotification(
-            "error",
-            `Could not connect to the server to fetch missions from ${endpoint}.`
-          );
+        } catch (err) {
+          showNotification("error", `Could not connect to server for ${endpoint}.`);
         }
       };
 
-      // Fetch both my missions and shared missions in parallel
-      Promise.all([
+      await Promise.all([
         fetchEndpoint("/mine/decrypt", setMyMissions),
         fetchEndpoint("/shared/decrypt", setReceivedMissions),
       ]);
+      setLoading(false);
     };
 
+    // Initial fetch
     fetchAllMissions();
-  }, [token, privateKeyPem, showNotification, onLogout, user.id]); // Re-fetch if token or key changes
 
+    // Timer fetch every 30 seconds
+    const intervalId = setInterval(fetchAllMissions, 30_000);
+    return () => clearInterval(intervalId); // Cleanup
+  }, [token, privateKeyPem]); // Only rerun if token or key changes
+
+  // --- Create mission ---
   const handleCreateMission = async (title: string, description: string) => {
     if (!token) {
       showNotification("error", "Authentication error. Please log in again.");
       return;
     }
+    const sessionPassword = sessionStorage.getItem("session_password");
+    if (!sessionPassword) {
+      showNotification("error", "Password not available. Please refresh and login again.");
+      return;
+    }
 
     const missionContent = {
+      password: sessionPassword,
       content: { title, description },
-      // assigned_user_ids: [], // Eliminado: el backend no espera este campo directamente en el cuerpo principal
     };
 
     try {
@@ -136,14 +135,13 @@ export default function Dashboard({
           description: newMissionData.content.description,
           createdBy: newMissionData.creator_id.toString(),
           assignedTo: newMissionData.creator_id.toString(),
-          createdAt: new Date().toISOString(), // The backend doesn't return this, so we set it
+          createdAt: new Date().toISOString(),
         };
         setMyMissions([newMission, ...myMissions]);
         setShowCreateModal(false);
         showNotification("success", "Mission created successfully!");
       } else {
         const errorData = await response.json();
-        // FastAPI 422 errors have a specific structure.
         let errorMessage = "Failed to create mission.";
         if (Array.isArray(errorData.detail)) {
           errorMessage = `Validation Error: ${errorData.detail[0].msg}`;
@@ -272,7 +270,9 @@ export default function Dashboard({
           </div>
 
           <div className="p-6">
-            {displayedMissions.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-12 text-slate-400">Loading missions...</div>
+            ) : displayedMissions.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-slate-400 text-lg">
                   No missions in this category
@@ -354,7 +354,7 @@ export default function Dashboard({
           }}
           onShare={(selectedUserIds) => {
             setShowShareModal(false);
-            console.log("Sharing mission with users:", selectedUserIds); // Placeholder for now
+            console.log("Sharing mission with users:", selectedUserIds);
             setSelectedMissionId(null);
           }}
         />

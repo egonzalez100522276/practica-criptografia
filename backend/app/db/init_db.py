@@ -25,11 +25,20 @@ def create_tables(conn=None) -> None:
         );
     """)
 
-    # Table for user public keys
+    # Table for user public keys (stored as X.509 certificates)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_keys (
             user_id INTEGER PRIMARY KEY,
-            public_key TEXT NOT NULL,
+            x509_certificate TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+    """)
+
+    # Table for user Ed25519 public keys (stored as X.509 certificates)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_ed_keys (
+            user_id INTEGER PRIMARY KEY,
+            x509_certificate TEXT NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         );
     """)
@@ -43,12 +52,22 @@ def create_tables(conn=None) -> None:
         );
     """)
 
+    # Table for user Ed25519 private keys
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_ed_private_keys (
+            user_id INTEGER PRIMARY KEY,
+            private_key_encrypted TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        );
+    """)
+
     # Missions table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS missions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             content_encrypted TEXT NOT NULL,
             iv TEXT NOT NULL,
+            signature TEXT NOT NULL,
             creator_id INTEGER,
             FOREIGN KEY (creator_id) REFERENCES users (id) ON DELETE CASCADE
         );
@@ -111,7 +130,6 @@ if __name__ == "__main__":
     conn = get_connection()
     conn.execute("PRAGMA foreign_keys = ON;")
     create_tables(conn)
-    # seed_demo_user(conn)
     conn.close()
 
-    print(f"✅ Database initialized with tables: users, user_keys, user_private_keys, missions, mission_access, sessions ({DB_PATH})")
+    print(f"✅ Database initialized with tables: users, user_keys, user_private_keys, user_ed_keys, user_ed_private_keys, missions, mission_access, sessions ({DB_PATH})")

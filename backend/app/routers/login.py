@@ -44,6 +44,7 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends(), cursor = Depend
         # This should ideally not happen if registration is atomic
         raise HTTPException(status_code=500, detail="Private key not found for user.")
 
+    # 6. Return the access token and the encrypted private key
     return {
         "access_token": access_token, 
         "token_type": "bearer",

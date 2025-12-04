@@ -34,3 +34,7 @@ __pycache__/
 
 # Database
 *.db
+
+# Certificate Authority
+ca_private_key.pem
+ca_certificate.pem

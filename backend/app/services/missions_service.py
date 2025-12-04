@@ -1,5 +1,5 @@
 import json
-from ..core.security import encrypt_with_aes, decrypt_private_key
+from ..core.security import encrypt_with_aes, decrypt_private_key, decrypt_ed_private_key, sign
 from ..services import user_service
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -39,43 +39,46 @@ def get_shared_missions_for_user(cursor, user_id: int) -> list:
     return missions
 
 
-def create_mission(cursor, content: MissionContent, creator_id: int) -> dict: # Changed content type
+def create_mission(cursor, content: MissionContent, creator_id: int, password: str) -> dict: 
     """
-    Creates a new mission, encrypts its content, and grants access to specified users.
+    Creates a new mission, encrypts its content, signs it with the creator's Ed25519 key,
+    and grants access to specified users.
     This is an atomic transaction managed by the `get_db` dependency.
     """
 
     # Convert the Pydantic model to a JSON string before encrypting
-    
     content_json_str = content.model_dump_json() # Use model_dump_json() for Pydantic v2
-    
-    # Part 2: Add signature to the content.
-    # data['signature'] = sign(data['title'] + data['description'], user_pk)
-    # La función sign hay que hacerla en security, habrá que usar algoritmos de firma de cryptography
 
+    # --- 0. Retrieve and decrypt the creator's Ed25519 private key ---
+    ed_private_key_pem = user_service.get_user_ed_private_key(cursor, creator_id)
+    if not ed_private_key_pem:
+        raise Exception(f"No Ed25519 key found for user {creator_id}")
 
+    ed_private_key_obj = decrypt_ed_private_key(ed_private_key_pem, password)
+    if not ed_private_key_obj:
+        raise Exception("Wrong password or corrupted key. Cannot decrypt Ed25519 private key.")
 
-    # 1. Encrypt the mission content with a new, single-use AES key
-    encrypted_content_hex, nonce_hex, aes_key_bytes = encrypt_with_aes(content_json_str) # Get aes_key_bytes
-    
-    # 2. Insert the encrypted mission into the database
+    # --- 1. Sign the mission content ---
+    signature_b64 = sign(content_json_str, ed_private_key_obj)
+
+    # --- 2. Encrypt the mission content with a new, single-use AES key ---
+    encrypted_content_hex, nonce_hex, aes_key_bytes = encrypt_with_aes(content_json_str) 
+
+    # --- 3. Insert the encrypted mission into the database with the signature ---
     cursor.execute(
-        "INSERT INTO missions (content_encrypted, iv, creator_id) VALUES (?, ?, ?)",
-        (encrypted_content_hex, nonce_hex, creator_id)
+        "INSERT INTO missions (content_encrypted, iv, creator_id, signature) VALUES (?, ?, ?, ?)",
+        (encrypted_content_hex, nonce_hex, creator_id, signature_b64)
     )
     mission_id = cursor.lastrowid
 
-    # 3. Get all users who need access: the creator and all admins.
+    # --- 4. Get all users who need access: the creator and all admins ---
     admins = user_service.get_admins(cursor)
-    # Use a set to automatically handle duplicates (e.g., if the creator is an admin)
     user_ids_with_access = {creator_id} | {admin['id'] for admin in admins}
 
-    # 4. For each user, encrypt the AES key with their public key and save it.
+    # --- 5. For each user, encrypt the AES key with their public key and save it ---
     for user_id in user_ids_with_access:
         public_key_data = user_service.get_user_public_key(cursor, user_id)
         if not public_key_data or not public_key_data.get('public_key'):
-            # In a real-world scenario, you might want to decide how to handle this.
-            # For now, we'll raise an exception to ensure data integrity.
             raise Exception(f"Could not find public key for user ID: {user_id}. Mission creation aborted.")
 
         public_key_pem = public_key_data['public_key']
@@ -83,7 +86,11 @@ def create_mission(cursor, content: MissionContent, creator_id: int) -> dict: # 
 
         encrypted_aes_key_for_user = user_public_key.encrypt(
             aes_key_bytes,
-            padding.OAEP(mgf=padding.MGF1(algorithm=padding.hashes.SHA256()), algorithm=padding.hashes.SHA256(), label=None)
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=padding.hashes.SHA256()), 
+                algorithm=padding.hashes.SHA256(), 
+                label=None
+            )
         )
 
         cursor.execute(
@@ -91,54 +98,81 @@ def create_mission(cursor, content: MissionContent, creator_id: int) -> dict: # 
             (mission_id, user_id, encrypted_aes_key_for_user)
         )
 
-    # The content returned should be the original content, not the encrypted one.
-    return {"id": mission_id, "content": content.model_dump(), "creator_id": creator_id} # Return original content for response
+    # --- 6. Return the original content and signature for the response ---
+    return {
+        "id": mission_id,
+        "content": content.model_dump(),
+        "creator_id": creator_id,
+        "signature": signature_b64
+    }
 
 
-def decrypt_mission(cursor, mission_id: int, user_id: int, user_private_key) -> dict | None:
+from fastapi import HTTPException, status
+from ..core.security import verify
+from cryptography.hazmat.primitives import serialization
+
+def decrypt_mission(cursor, mission_id: int, user_id: int, user_private_key) -> dict:
     """
-    Decrypts the content of a mission for a specific user.
-    Returns the decrypted mission content or None if access is denied or an error occurs.
+    Decrypts the content of a mission for a specific user and verifies the signature.
+    Raises HTTPException if signature is invalid or access is denied.
     """
     # 1. Retrieve the encrypted mission from the DB
     cursor.execute("SELECT * FROM missions WHERE id = ?", (mission_id,))
     mission = cursor.fetchone()
-    if not mission:
-        return None
-    if not user_private_key:
-        # This likely means a wrong password was provided
-        return None
+    if not mission or not user_private_key:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied or invalid key.")
     
-    # 3. Retrieve the encrypted AES key for this specific mission and user
-    cursor.execute("SELECT encrypted_key FROM mission_access WHERE mission_id = ? AND user_id = ?", (mission_id, user_id))
+    # 2. Retrieve the encrypted AES key for this user
+    cursor.execute(
+        "SELECT encrypted_key FROM mission_access WHERE mission_id = ? AND user_id = ?", 
+        (mission_id, user_id)
+    )
     access_data = cursor.fetchone()
     if not access_data:
-        # The user does not have access to this mission
-        return None
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User does not have access to this mission.")
     
-    # 4. Decrypt the AES key using the user's private RSA key
+    # 3. Decrypt the AES key
     encrypted_aes_key = access_data['encrypted_key']
     aes_key = user_private_key.decrypt(
         encrypted_aes_key,
-        padding.OAEP(mgf=padding.MGF1(algorithm=padding.hashes.SHA256()), algorithm=padding.hashes.SHA256(), label=None)
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=padding.hashes.SHA256()),
+            algorithm=padding.hashes.SHA256(),
+            label=None
+        )
     )
 
-    # 5. Decrypt the mission content using the now-decrypted AES key
+    # 4. Decrypt the mission content
     encrypted_content = bytes.fromhex(mission['content_encrypted'])
     iv = bytes.fromhex(mission['iv'])
     aesgcm = AESGCM(aes_key)
     decrypted_content_bytes = aesgcm.decrypt(iv, encrypted_content, None)
     decrypted_content_json = decrypted_content_bytes.decode('utf-8')
-    
-    # NEW: Get creator's username to include in the response
+    content_dict = json.loads(decrypted_content_json)
+
+    # 5. Get creator info and their Ed25519 public key
     creator = user_service.get_user_by_id(cursor, mission['creator_id'])
     creator_username = creator['username'] if creator else 'Unknown Agent'
+    ed_public_key_data = user_service.get_user_ed_public_key(cursor, mission['creator_id'])
+    if not ed_public_key_data:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"No Ed25519 public key found for user {mission['creator_id']}")
+    
+    ed_public_key_pem = ed_public_key_data['public_key']
+    ed_public_key_obj = serialization.load_pem_public_key(ed_public_key_pem.encode('utf-8'))
 
-    # 6. Return the full mission object with the decrypted content
+    # 6. Verify signature
+    content_json_str_for_verify = decrypted_content_bytes.decode("utf-8")  # exactamente lo mismo bytes que se descifró
+    if not verify(content_json_str_for_verify, mission['signature'], ed_public_key_obj):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid signature for mission ID {mission['id']}.")
+
     return {
-        "id": mission['id'], "creator_id": mission['creator_id'], 
-        "creator_username": creator_username, "content": json.loads(decrypted_content_json)
+        "id": mission['id'],
+        "creator_id": mission['creator_id'],
+        "creator_username": creator_username,
+        "content": content_dict,
+        "signature": mission['signature']
     }
+
 
 def decrypt_missions(cursor, missions: list, user_id: int, user_private_key) -> list:
     """
