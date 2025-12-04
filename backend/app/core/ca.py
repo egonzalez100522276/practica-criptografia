@@ -69,8 +69,8 @@ def generate_or_load_ca(ca_key_path: Path = CA_KEY_PATH,
         .issuer_name(issuer)
         .public_key(ca_private_key.public_key())
         .serial_number(x509.random_serial_number())
-        .not_valid_before(datetime.utcnow())
-        .not_valid_after(datetime.utcnow() + timedelta(days=3650))  # 10 years
+        .not_valid_before(datetime.now(timezone.utc))
+        .not_valid_after(datetime.now(timezone.utc) + timedelta(days=3650))  # 10 years
         .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
         .sign(ca_private_key, hashes.SHA256())
     )
@@ -117,8 +117,8 @@ def create_user_certificate(user_public_pem: str, username: str,
         .issuer_name(ca_certificate.subject)
         .public_key(user_public_key)
         .serial_number(x509.random_serial_number())
-        .not_valid_before(datetime.utcnow())
-        .not_valid_after(datetime.utcnow() + timedelta(days=validity_days))
+        .not_valid_before(datetime.now(timezone.utc))
+        .not_valid_after(datetime.now(timezone.utc) + timedelta(days=validity_days))
         .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
         .sign(ca_private_key, hashes.SHA256())
     )
