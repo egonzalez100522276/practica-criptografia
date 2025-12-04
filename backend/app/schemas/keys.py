@@ -3,6 +3,7 @@ from pydantic import BaseModel
 class UserKeysResponse(BaseModel):
     user_id: int
     certificate: str
+    ed_certificate: str
     public_key: str
     encrypted_private_key: str
     ed_public_key: str

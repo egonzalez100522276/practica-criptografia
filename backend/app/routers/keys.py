@@ -12,8 +12,10 @@ def get_user_keys(user_id: int, cursor = Depends(get_db)):
     """
     Retrieves the public and encrypted private keys for a specific user.
     """
-    # Get the user's certificate
+    # Get the user's certificates
     user_certificate_data = user_service.get_user_certificate(cursor, user_id)
+    user_ed_certificate_data = user_service.get_user_ed_certificate(cursor, user_id)
+
 
     # Case: Not found
     if not user_certificate_data:
@@ -38,6 +40,7 @@ def get_user_keys(user_id: int, cursor = Depends(get_db)):
     return key_schema.UserKeysResponse(
         user_id=user_id,
         certificate=user_certificate_data,
+        ed_certificate=user_ed_certificate_data,
         public_key=public_key_data['public_key'],
         encrypted_private_key=private_key_data['private_key_encrypted'],
         ed_public_key=ed_public_key_data['public_key'],
