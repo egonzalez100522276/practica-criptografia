@@ -12,6 +12,17 @@ def get_user_keys(user_id: int, cursor = Depends(get_db)):
     """
     Retrieves the public and encrypted private keys for a specific user.
     """
+    # Get the user's certificate
+    user_certificate_data = user_service.get_user_certificate(cursor, user_id)
+
+    # Case: Not found
+    if not user_certificate_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Certificate for user with id {user_id} not found"
+        )
+
+    # Get the user's public and encrypted private keys
     public_key_data = user_service.get_user_public_key(cursor, user_id)
     private_key_data = user_service.get_user_private_key(cursor, user_id)
     ed_public_key_data = user_service.get_user_ed_public_key(cursor, user_id)
@@ -26,6 +37,7 @@ def get_user_keys(user_id: int, cursor = Depends(get_db)):
     # Combine the data from both tables into the response model
     return key_schema.UserKeysResponse(
         user_id=user_id,
+        certificate=user_certificate_data,
         public_key=public_key_data['public_key'],
         encrypted_private_key=private_key_data['private_key_encrypted'],
         ed_public_key=ed_public_key_data['public_key'],
@@ -41,17 +53,21 @@ def decrypt_user_private_key(
     Finds a user by username, retrieves their encrypted private key,
     and decrypts it using the provided password.
     """
+    # Get user
     user = user_service.get_user_by_username(cursor, body.username)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
+    # Get their private key
     private_key_data = user_service.get_user_private_key(cursor, user['id'])
     if not private_key_data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Private key not found for user")
 
+    # Decrypt it
     decrypted_key_obj = decrypt_private_key(private_key_data['private_key_encrypted'], body.password)
     if not decrypted_key_obj:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect password")
 
+    # Return the decrypted private key
     private_pem = decrypted_key_obj.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()).decode('utf-8')
     return {"private_key_pem": private_pem}

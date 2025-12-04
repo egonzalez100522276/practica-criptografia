@@ -44,6 +44,15 @@ def save_user_private_key(cursor, user_id: int, encrypted_private_key: str):
         VALUES (?, ?)
     """, (user_id, encrypted_private_key))
 
+def get_user_certificate(cursor, user_id: int):
+    """
+    Finds a user's X.509 certificate by user_id.
+    """
+    cursor.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
+    cursor.execute("SELECT x509_certificate FROM user_keys WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    return row['x509_certificate'] if row else None
+
 def get_user_public_key(cursor, user_id: int):
     """
     Finds a user's RSA public key by user_id.
