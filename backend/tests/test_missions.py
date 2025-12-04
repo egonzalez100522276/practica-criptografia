@@ -124,3 +124,79 @@ def test_share_and_receive_mission(client: TestClient, register_user):
     assert received_mission["content"]["title"] == mission_content["title"]
     assert received_mission["content"]["description"] == mission_content["description"]
     assert received_mission["creator_username"] == "creator_agent"
+
+
+def test_decrypt_rejects_tampered_signature(client: TestClient, register_user, test_db):
+    """If the stored signature is altered, decryption must fail with invalid signature."""
+    user = register_user("sig_user", "p@ssw0rd!")
+    token = user["response"]["access_token"]
+    enc_key = user["response"]["encrypted_private_key"]
+    password = user["data"]["password"]
+
+    # Create a mission
+    mission_content = {"title": "Signed", "description": "Should fail if tampered"}
+    create_resp = client.post(
+        "/missions/",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"content": mission_content, "password": password},
+    )
+    assert create_resp.status_code == 201
+    mission_id = create_resp.json()["id"]
+
+    # Tamper the signature directly in DB
+    cursor = test_db.cursor()
+    cursor.execute("UPDATE missions SET signature = ? WHERE id = ?", ("00", mission_id))
+    test_db.commit()
+
+    # Decrypt user's private key and call decrypt endpoint
+    priv_key_obj = decrypt_private_key(enc_key, password)
+    priv_key_pem = priv_key_obj.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("utf-8")
+
+    decrypt_resp = client.post(
+        "/missions/mine/decrypt",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"private_key_pem": priv_key_pem},
+    )
+    assert decrypt_resp.status_code == 400
+    assert "Invalid signature" in decrypt_resp.json()["detail"]
+
+
+def test_create_mission_rejects_invalid_certificate(client: TestClient, register_user, test_db):
+    """Corrupting the stored X.509 cert should prevent mission creation."""
+    user = register_user("cert_user", "p@ssw0rd!")
+    token = user["response"]["access_token"]
+    password = user["data"]["password"]
+    user_id = user["response"]["user_id"]
+
+    # Corrupt the certificate in DB
+    cursor = test_db.cursor()
+    cursor.execute(
+        "UPDATE user_keys SET x509_certificate = ? WHERE user_id = ?", ("INVALID CERT", user_id)
+    )
+    test_db.commit()
+
+    mission_content = {"title": "Won't work", "description": "Bad cert should block"}
+    resp = client.post(
+        "/missions/",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"content": mission_content, "password": password},
+    )
+    assert resp.status_code == 500  # backend rejects invalid cert during public key extraction
+
+
+def test_create_mission_wrong_password_for_signing(client: TestClient, register_user):
+    """Using a wrong password to open the Ed25519 key should fail mission creation."""
+    user = register_user("wrongpass_user", "correct-pass")
+    token = user["response"]["access_token"]
+
+    mission_content = {"title": "Should fail", "description": "Wrong password for Ed25519"}
+    resp = client.post(
+        "/missions/",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"content": mission_content, "password": "bad-pass"},
+    )
+    assert resp.status_code == 500

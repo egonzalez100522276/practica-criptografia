@@ -60,7 +60,8 @@ def client(test_db):
     app.dependency_overrides[get_db] = override_get_db
 
     # Create and return the test client
-    with TestClient(app) as test_client:
+    # We disable server exception bubbling to capture 500 responses in negative tests.
+    with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
 
     # Clean up the override after the test to not affect other tests if any
