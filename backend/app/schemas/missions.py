@@ -1,9 +1,20 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from pydantic_core import PydanticCustomError
 
 # Defiine JSON structure for missions
 class MissionContent(BaseModel):
     title: str = Field(..., min_length=3, max_length=100)
     description: str = Field(max_length=2000)
+
+    # Custom error message for frontend.
+    @field_validator("title", mode="before")
+    def validate_title_length(cls, v):
+        if not isinstance(v, str) or len(v) < 3:
+            raise PydanticCustomError(
+                'title_too_short',
+                "Title must be at least 3 characters long.",
+            )
+        return v
 
 class MissionCreate(BaseModel):
     content: MissionContent
