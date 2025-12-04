@@ -93,12 +93,12 @@ def get_user_private_key(cursor, user_id: int):
 
 
 # --- Ed25519 keys ---
-def save_user_ed_public_key(cursor, user_id: int, public_key: str):
-    """ Insert Ed25519 public key into DB using the provided cursor. Does NOT commit. """
+def save_user_ed_certificate(cursor, user_id: int, certificate_pem: str):
+    """ Insert Ed25519 public key certificate into DB using the provided cursor. Does NOT commit. """
     cursor.execute("""
-        INSERT INTO user_ed_keys (user_id, public_key)
+        INSERT INTO user_ed_keys (user_id, x509_certificate)
         VALUES (?, ?) 
-    """, (user_id, public_key))
+    """, (user_id, certificate_pem))
 
 def save_user_ed_private_key(cursor, user_id: int, encrypted_private_key: str):
     """ Insert Ed25519 private key into DB using the provided cursor. Does NOT commit. """
@@ -112,9 +112,28 @@ def get_user_ed_public_key(cursor, user_id: int):
     Finds a user's Ed25519 public key by user_id.
     """
     cursor.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
-    cursor.execute("SELECT public_key FROM user_ed_keys WHERE user_id = ?", (user_id,))
-    key = cursor.fetchone()
-    return key
+    cursor.execute("SELECT x509_certificate FROM user_ed_keys WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    
+    if not row:
+        return None
+
+    cert_pem = row['x509_certificate']
+    
+    # Validate certificate
+    _, ca_cert = generate_or_load_ca()
+    if not validate_user_certificate(cert_pem, ca_cert):
+        raise ValueError(f"Invalid or expired Ed25519 certificate for user {user_id}")
+
+    # Extract public key from certificate
+    cert = x509.load_pem_x509_certificate(cert_pem.encode())
+    public_key = cert.public_key()
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode('utf-8')
+
+    return {'public_key': public_pem}
 
 def get_user_ed_private_key(cursor, user_id: int):
     """

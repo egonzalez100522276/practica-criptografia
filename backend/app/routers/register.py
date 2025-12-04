@@ -42,6 +42,7 @@ def _register_user_logic(user_data: user_schema.UserCreate, role: str, cursor = 
         # 5. Generate X.509 certificates
         ca_private_key, ca_certificate = generate_or_load_ca()
         user_cert_pem = create_user_certificate(public_pem, user_data.username, ca_private_key, ca_certificate)
+        user_ed_cert_pem = create_user_certificate(ed_public_pem, user_data.username, ca_private_key, ca_certificate)
 
         # 6. Save public and private keys (with x.509 certificate)
 
@@ -50,7 +51,8 @@ def _register_user_logic(user_data: user_schema.UserCreate, role: str, cursor = 
         user_service.save_user_private_key(cursor=cursor, user_id=created_user.id, encrypted_private_key=encrypted_private_pem)
 
         # Ed25519
-        user_service.save_user_ed_public_key(cursor=cursor, user_id=created_user.id, public_key=ed_public_pem)
+
+        user_service.save_user_ed_certificate(cursor=cursor, user_id=created_user.id, certificate_pem=user_ed_cert_pem)
         user_service.save_user_ed_private_key(cursor=cursor, user_id=created_user.id, encrypted_private_key=ed_encrypted_private_pem)
 
         # 7. Create access token
