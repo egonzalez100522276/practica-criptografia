@@ -48,6 +48,7 @@ def create_tables(conn=None) -> None:
         CREATE TABLE IF NOT EXISTS user_private_keys (
             user_id INTEGER PRIMARY KEY,
             private_key_encrypted TEXT NOT NULL,
+            elgamal_private_key_encrypted TEXT,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         );
     """)

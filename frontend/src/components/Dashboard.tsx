@@ -21,6 +21,7 @@ interface DashboardProps {
   onSwitchToAdmin: () => void;
   showNotification: (type: "success" | "error", message: string) => void;
   privateKeyPem: string | null;
+  sessionPassword: string | null;
 }
 
 export default function Dashboard({
@@ -30,6 +31,7 @@ export default function Dashboard({
   token,
   showNotification,
   privateKeyPem,
+  sessionPassword,
 }: DashboardProps) {
   const [myMissions, setMyMissions] = useState<Mission[]>([]);
   const [receivedMissions, setReceivedMissions] = useState<Mission[]>([]);
@@ -289,9 +291,24 @@ export default function Dashboard({
                       <div className="flex-1">
                         <div className="flex items-start">
                           <div className="flex-1">
-                            <h3 className="text-lg font-semibold mb-2 text-white">
-                              {mission.title}
-                            </h3>
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-lg font-semibold text-white">
+                                {mission.title}
+                              </h3>
+                              {mission.signatureValid !== undefined && (
+                                <span
+                                  className={`text-xs px-2 py-1 rounded-full border ${
+                                    mission.signatureValid
+                                      ? "bg-green-600/20 text-green-100 border-green-500/40"
+                                      : "bg-red-700/20 text-red-100 border-red-500/40"
+                                  }`}
+                                >
+                                  {mission.signatureValid
+                                    ? "Firma válida"
+                                    : "Firma no válida"}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-sm mb-3 text-slate-300">
                               {mission.description}
                             </p>

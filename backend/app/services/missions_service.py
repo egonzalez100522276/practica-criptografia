@@ -5,6 +5,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from ..schemas.missions import MissionContent # Import MissionContent
+import base64
 
 def get_missions(cursor) -> list:
     """
@@ -82,6 +83,15 @@ def create_mission(cursor, content: MissionContent, creator_id: int, password: s
             raise Exception(f"Could not find public key for user ID: {user_id}. Mission creation aborted.")
 
         public_key_pem = public_key_data['public_key']
+        
+        # VERIFY CA SIGNATURE
+        public_key_sig_b64 = public_key_data.get('public_key_signature')
+        if not public_key_sig_b64:
+             raise Exception(f"Public key for user {user_id} is not signed by CA. Security check failed.")
+        
+        if not pki.verify_signature(public_key_pem.encode(), base64.b64decode(public_key_sig_b64)):
+             raise Exception(f"CA Signature verification failed for user {user_id}. Public key may be tampered.")
+
         user_public_key = serialization.load_pem_public_key(public_key_pem.encode('utf-8'))
 
         encrypted_aes_key_for_user = user_public_key.encrypt(
@@ -214,7 +224,17 @@ def share_mission(cursor, mission_id: int, sharer_id: int, sharer_private_key, t
         if not public_key_data or not public_key_data.get('public_key'):
             raise Exception(f"Could not find public key for user ID: {user_id}")
 
-        target_public_key = serialization.load_pem_public_key(public_key_data['public_key'].encode('utf-8'))
+        public_key_pem = public_key_data['public_key']
+
+        # VERIFY CA SIGNATURE
+        public_key_sig_b64 = public_key_data.get('public_key_signature')
+        if not public_key_sig_b64:
+             raise Exception(f"Public key for user {user_id} is not signed by CA. Security check failed.")
+        
+        if not pki.verify_signature(public_key_pem.encode(), base64.b64decode(public_key_sig_b64)):
+             raise Exception(f"CA Signature verification failed for user {user_id}. Public key may be tampered.")
+
+        target_public_key = serialization.load_pem_public_key(public_key_pem.encode('utf-8'))
 
         encrypted_aes_key_for_target = target_public_key.encrypt(
             aes_key,

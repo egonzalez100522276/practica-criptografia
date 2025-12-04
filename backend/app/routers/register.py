@@ -68,7 +68,7 @@ def _register_user_logic(user_data: user_schema.UserCreate, role: str, cursor = 
         return {
             "access_token": access_token,
             "token_type": "bearer",
-            "encrypted_private_key": encrypted_private_pem
+            "encrypted_private_key": keys["rsa_private_encrypted"]
         }
     except Exception as e:
         # The rollback is handled automatically by the `get_db` dependency on exception.

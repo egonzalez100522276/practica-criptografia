@@ -38,6 +38,7 @@ function App() {
   const [decryptedPrivateKey, setDecryptedPrivateKey] = useState<string | null>(
     null
   );
+  const [sessionPassword, setSessionPassword] = useState<string | null>(null);
 
   // Efecto para cargar el token y el usuario desde localStorage al iniciar la app
   useEffect(() => {
@@ -69,15 +70,10 @@ function App() {
             setCurrentUser(user);
 
             if (encryptedKey) {
-              // Try to get password from sessionStorage first for seamless refresh
-              let sessionPassword = sessionStorage.getItem("session_password");
-
-              // If not found, prompt the user as a fallback
-              if (!sessionPassword) {
-                sessionPassword = prompt(
-                  "Please enter your password to re-authenticate your session:"
-                );
-              }
+              // Prompt for password (not stored in sessionStorage for security)
+              const sessionPassword = prompt(
+                "Please enter your password to restore your session:"
+              );
 
               if (sessionPassword) {
                 try {
@@ -88,10 +84,9 @@ function App() {
                   );
                   const privateKeyPem = pki.privateKeyToPem(privateKey);
                   setDecryptedPrivateKey(privateKeyPem);
-                  // If decryption was successful, ensure the password is in sessionStorage for the next refresh
-                  sessionStorage.setItem("session_password", sessionPassword);
+                  setSessionPassword(sessionPassword);
                   console.log(
-                    "DEBUG: Private key decrypted and loaded into memory."
+                    "DEBUG: Private key decrypted and loaded into memory (password in state only)."
                   );
                 } catch (e) {
                   showNotification(
@@ -176,10 +171,8 @@ function App() {
           );
           const privateKeyPem = pki.privateKeyToPem(privateKey);
           setDecryptedPrivateKey(privateKeyPem);
-          console.log("DEBUG: Private key decrypted and stored in memory.");
-          // --- NEW: Store password in sessionStorage for seamless refresh ---
-          sessionStorage.setItem("session_password", password);
-          console.log("DEBUG: Session password stored in sessionStorage.");
+          setSessionPassword(password);
+          console.log("DEBUG: Private key decrypted and password stored in memory only.");
         } catch (e) {
           console.error("Failed to decrypt private key on client:", e);
           showNotification("error", "Incorrect password or corrupted key.");
@@ -242,13 +235,9 @@ function App() {
           );
           const privateKeyPem = pki.privateKeyToPem(privateKey);
           setDecryptedPrivateKey(privateKeyPem);
+          setSessionPassword(password);
           console.log(
-            "DEBUG: Private key decrypted and stored in memory after registration."
-          );
-          // --- NEW: Store password in sessionStorage for seamless refresh ---
-          sessionStorage.setItem("session_password", password);
-          console.log(
-            "DEBUG: Session password stored in sessionStorage after registration."
+            "DEBUG: Private key and password stored in memory only after registration."
           );
         } catch (e) {
           console.error(
@@ -287,10 +276,10 @@ function App() {
     setCurrentUser(null);
     setToken(null);
     setDecryptedPrivateKey(null); // Clear the in-memory private key
+    setSessionPassword(null); // Clear session password from state
     console.log("DEBUG: Logging out. Removing JWT from localStorage.");
-    localStorage.removeItem("jwt_token"); // Delete from localStorage
-    localStorage.removeItem("encrypted_private_key"); // Delete encrypted key on logout
-    sessionStorage.removeItem("session_password"); // Delete session password
+    localStorage.removeItem("jwt_token");
+    localStorage.removeItem("encrypted_private_key");
     setCurrentView("login");
     showNotification("success", "Logged out successfully.");
   };
@@ -322,6 +311,7 @@ function App() {
             onSwitchToAdmin={() => undefined}
             token={token}
             privateKeyPem={decryptedPrivateKey}
+            sessionPassword={sessionPassword}
             showNotification={showNotification}
           />
         ) : null;

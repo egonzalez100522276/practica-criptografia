@@ -12,6 +12,7 @@ export interface Mission {
   createdBy: string;
   assignedTo: string;
   createdAt: string;
+  signatureValid?: boolean;
 }
 
 export interface MissionForm {

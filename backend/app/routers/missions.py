@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Body
+from pydantic import BaseModel
 from ..schemas import missions as mission_schema
 from ..schemas import user as user_schema
 from ..services import user_service, missions_service
@@ -9,6 +10,10 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 router = APIRouter()
 
+class MissionCreateRequest(BaseModel):
+    content: mission_schema.MissionContent
+    password: str
+
 @router.get("/", response_model=list[mission_schema.MissionInDB])
 def get_missions(cursor = Depends(get_db)):
     """
@@ -18,12 +23,12 @@ def get_missions(cursor = Depends(get_db)):
 
 @router.post("/", response_model=mission_schema.MissionResponse, status_code=status.HTTP_201_CREATED)
 def create_mission(
-    mission_data: mission_schema.MissionCreate,
+    mission_data: MissionCreateRequest,
     current_user: user_schema.UserResponse = Depends(get_current_user),
     cursor = Depends(get_db)
 ):
     """
-    Creates a new mission. Requires authentication.
+    Creates a new mission. Requires authentication and password for signing.
     The mission content is encrypted and access is granted to the creator and the admins.
     The password is used to sign the mission content.
     """
@@ -105,4 +110,3 @@ def get_and_decrypt_shared_missions(
 
     missions = missions_service.get_shared_missions_for_user(cursor, user_id=current_user['id'])
     return missions_service.decrypt_missions(cursor, missions, current_user['id'], user_private_key)
-    

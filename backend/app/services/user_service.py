@@ -40,9 +40,9 @@ def save_user_certificate(cursor, user_id: int, certificate_pem: str):
 def save_user_private_key(cursor, user_id: int, encrypted_private_key: str):
     """ Insert RSA private key into DB using the provided cursor. Does NOT commit. """
     cursor.execute("""
-        INSERT INTO user_private_keys (user_id, private_key_encrypted)
-        VALUES (?, ?)
-    """, (user_id, encrypted_private_key))
+        INSERT INTO user_private_keys (user_id, private_key_encrypted, elgamal_private_key_encrypted)
+        VALUES (?, ?, ?)
+    """, (user_id, encrypted_private_key, elgamal_private_key_encrypted))
 
 def get_user_certificate(cursor, user_id: int):
     """
@@ -87,7 +87,7 @@ def get_user_private_key(cursor, user_id: int):
     Finds a user's RSA private key data by user_id.
     """
     cursor.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
-    cursor.execute("SELECT private_key_encrypted FROM user_private_keys WHERE user_id = ?", (user_id,))
+    cursor.execute("SELECT * FROM user_private_keys WHERE user_id = ?", (user_id,))
     key = cursor.fetchone()
     return key
 
